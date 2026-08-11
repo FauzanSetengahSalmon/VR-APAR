@@ -17,6 +17,12 @@ public class AutoFireExtinguisher : MonoBehaviour
     [Header("Mode Semprot Otomatis")]
     public bool autoSprayOnGrab = true;
 
+    [Header("Offset Pegangan Tangan")]
+    [Tooltip("Geser posisi APAR relatif terhadap tangan")]
+    public Vector3 handOffsetPosition = Vector3.zero;
+    [Tooltip("Putar rotasi APAR relatif terhadap tangan")]
+    public Vector3 handOffsetRotation = Vector3.zero;
+
     [Header("Testing / Debug")]
     public bool debugForceSpray = false;
 
@@ -93,14 +99,27 @@ public class AutoFireExtinguisher : MonoBehaviour
         if (!isAttachedToHand && args.interactorObject != null)
         {
             isAttachedToHand = true;
-            transform.SetParent(args.interactorObject.transform);
 
-            // Matikan fisis agar selalu menempel pada tangan
+            // 1. Pindahkan parent ke tangan
+            Transform handTransform = args.interactorObject.transform;
+            transform.SetParent(handTransform);
+
+            // 2. Reset posisi & rotasi lokal agar menempel di tangan
+            transform.localPosition = handOffsetPosition;
+            transform.localRotation = Quaternion.Euler(handOffsetRotation);
+
+            // 3. Matikan fisika
             Rigidbody rb = GetComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.isKinematic = true;
                 rb.useGravity = false;
+            }
+
+            // 4. Matikan XRGrabInteractable agar sistem XR tidak lagi menarik/menggeser APAR
+            if (grabInteractable != null)
+            {
+                grabInteractable.enabled = false;
             }
         }
 
