@@ -107,17 +107,19 @@ public class APARPin : MonoBehaviour
         }
         else
         {
-            // Coba cari secara otomatis dari parent
             AutoFireExtinguisher found = GetComponentInParent<AutoFireExtinguisher>();
             if (found != null)
             {
                 found.pinPulled = true;
-                Debug.Log("[APARPin] AutoFireExtinguisher ditemukan secara otomatis via GetComponentInParent.");
+                mainExtinguisher = found;
             }
-            else
-            {
-                Debug.LogWarning("[APARPin] AutoFireExtinguisher tidak ditemukan! Assign secara manual di Inspector.");
-            }
+        }
+
+        // Beritahu APARPropStateMachine jika ada
+        APARPropStateMachine propState = GetComponentInParent<APARPropStateMachine>();
+        if (propState != null)
+        {
+            propState.PullPin();
         }
 
         // Lepaskan parent (pin terpisah dari APAR)

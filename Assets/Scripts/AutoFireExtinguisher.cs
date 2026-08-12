@@ -53,9 +53,13 @@ public class AutoFireExtinguisher : MonoBehaviour
     //  UNITY LIFECYCLE
     // ═══════════════════════════════════════════════════════════════════════
 
+    private APARPropStateMachine propStateMachine;
+
     private void Awake()
     {
         grabInteractable = GetComponent<XRGrabInteractable>();
+        propStateMachine = GetComponent<APARPropStateMachine>();
+        if (propStateMachine == null) propStateMachine = GetComponentInParent<APARPropStateMachine>();
 
         // Kunci fisika agar APAR tidak jatuh saat game dimulai
         Rigidbody rb = GetComponent<Rigidbody>();
@@ -87,7 +91,6 @@ public class AutoFireExtinguisher : MonoBehaviour
         }
 
         // ⚠️ PAKSA RESET — override nilai Inspector lama yang mungkin masih true
-        // Ini mencegah spray nyala otomatis saat game dimulai
         pinPulled          = false;
         debugForceSpray    = false;
         isTestingActive    = false;
@@ -115,7 +118,6 @@ public class AutoFireExtinguisher : MonoBehaviour
             grabInteractable.selectEntered.RemoveListener(OnGrabEnter);
             grabInteractable.selectExited.RemoveListener(OnGrabExit);
         }
-        // Pastikan spray mati jika object dinonaktifkan
         StopSpray();
     }
 
@@ -127,19 +129,33 @@ public class AutoFireExtinguisher : MonoBehaviour
             isMainHandleHeld = grabInteractable.isSelected || grabInteractable.interactorsSelecting.Count > 0;
         }
 
-        // Keyboard shortcut untuk testing di Editor (Space atau G)
-        if (Keyboard.current != null &&
-            (Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.gKey.wasPressedThisFrame))
+        // ── Testing Keyboard di Editor ─────────────────────────────────────
+        bool keyboardLeverPressed = false;
+        if (Keyboard.current != null)
         {
-            isTestingActive = !isTestingActive;
-            Debug.Log("[APAR] Debug spray toggled: " + isTestingActive);
+            // Tekan 'P' di keyboard untuk cabut/pasang pin
+            if (Keyboard.current.pKey.wasPressedThisFrame)
+            {
+                pinPulled = !pinPulled;
+                Debug.Log($"[APAR] 🔑 Pin State (via 'P'): {(pinPulled ? "DICABUT (UNLOCKED)" : "TERPASANG (LOCKED)")}");
+                if (propStateMachine != null)
+                {
+                    if (pinPulled) propStateMachine.PullPin();
+                    else propStateMachine.LockPin();
+                }
+            }
+
+            // Tahan 'Space' di keyboard untuk tekan gagang
+            keyboardLeverPressed = Keyboard.current.spaceKey.isPressed;
         }
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // KONDISI SPRAY — satu-satunya tempat logika spray
+        // KONDISI SPRAY — Wajib Mengikuti State Machine & Pin
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // Normal play: pin HARUS dicabut + hose HARUS sedang digenggam
-        bool shouldSpray = (pinPulled && isHoseHeld) || isTestingActive || debugForceSpray;
+        bool isPropSpraying = (propStateMachine != null && propStateMachine.IsSpraying);
+        bool isKeyboardSpraying = pinPulled && keyboardLeverPressed;
+        bool isStandardVRSpraying = pinPulled && isHoseHeld;
+        bool shouldSpray = isPropSpraying || isKeyboardSpraying || isStandardVRSpraying || debugForceSpray;
 
         // Nyalakan/matikan spray hanya saat ada perubahan state (efisien)
         if (shouldSpray && !wasSprayingLastFrame)

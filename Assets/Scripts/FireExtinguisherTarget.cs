@@ -111,13 +111,20 @@ public class FireExtinguisherTarget : MonoBehaviour
         }
     }
 
+    private float lastParticleCollisionTime = 0f;
+
     private void OnParticleCollision(GameObject other)
     {
         if (isExtinguished) return;
-        if (!other.CompareTag("Smoke")) return;
 
-        // Pemadaman berbasis benturan partikel fisika
-        ExtinguishGradually(Time.deltaTime);
+        // Limiter agar tidak memproses ratusan kalkulasi per detik di CPU Quest
+        if (Time.time - lastParticleCollisionTime < 0.1f) return;
+        lastParticleCollisionTime = Time.time;
+
+        if (other.CompareTag("Smoke"))
+        {
+            ExtinguishGradually(0.1f);
+        }
     }
 
     private void Update()

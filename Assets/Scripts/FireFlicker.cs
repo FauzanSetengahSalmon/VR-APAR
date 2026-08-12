@@ -43,16 +43,17 @@ public class FireFlicker : MonoBehaviour
         float noiseVal = Mathf.PerlinNoise(time, time * 0.7f);
         float noiseVal2 = Mathf.PerlinNoise(time * 1.3f + 5f, time * 0.5f);
 
-        // Intensitas cahaya
+        // Intensitas cahaya & warna bergeser antara oranye dan kuning
         lightComp.intensity = Mathf.Lerp(minIntensity, maxIntensity, noiseVal);
-
-        // Warna bergeser antara oranye dan kuning
         lightComp.color = Color.Lerp(colorA, colorB, noiseVal2);
 
-        // Jitter posisi kecil
-        float jx = (Mathf.PerlinNoise(time * 2f + 10f, 0f) - 0.5f) * 2f * positionJitter;
-        float jy = (Mathf.PerlinNoise(0f, time * 2f + 10f) - 0.5f) * 2f * positionJitter;
-        transform.localPosition = originalLocalPos + new Vector3(jx, jy, 0f);
+        // Jitter posisi hanya jika diaktifkan
+        if (positionJitter > 0.001f)
+        {
+            float jx = (Mathf.PerlinNoise(time * 2f + 10f, 0f) - 0.5f) * 2f * positionJitter;
+            float jy = (Mathf.PerlinNoise(0f, time * 2f + 10f) - 0.5f) * 2f * positionJitter;
+            transform.localPosition = originalLocalPos + new Vector3(jx, jy, 0f);
+        }
     }
 
     /// <summary>Matikan flicker (saat api padam)</summary>
