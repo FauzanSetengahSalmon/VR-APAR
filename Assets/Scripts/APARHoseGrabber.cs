@@ -3,9 +3,6 @@ using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
-/// <summary>
-/// Memungkinkan pegangan tangan kedua (Two-Handed Grab) pada nozzle/selang APAR.
-/// </summary>
 public class APARHoseGrabber : MonoBehaviour
 {
     [Header("Referensi")]

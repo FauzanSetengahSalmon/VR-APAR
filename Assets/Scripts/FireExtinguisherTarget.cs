@@ -1,10 +1,6 @@
 using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// Dipasang pada setiap titik api.
-/// Menangani pemadaman bertahap & visual api meredup secara presisi.
-/// </summary>
 public class FireExtinguisherTarget : MonoBehaviour
 {
     [Header("Referensi Api")]
@@ -90,9 +86,6 @@ public class FireExtinguisherTarget : MonoBehaviour
             fireManager = FindFirstObjectByType<FireManager>();
     }
 
-    /// <summary>
-    /// Dipanggil bertahap saat terkena semprotan APAR
-    /// </summary>
     public void ExtinguishGradually(float deltaTime)
     {
         if (isExtinguished) return;

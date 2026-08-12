@@ -3,6 +3,14 @@ using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
+/// <summary>
+/// Script utama APAR (Alat Pemadam Api Ringan) dengan mekanisme realistis:
+/// - Tangan kanan memegang body APAR (handle utama)
+/// - Tangan kanan juga dipakai untuk mencabut pin (via APARPin.cs)
+/// - Tangan kiri memegang hose/moncong (via APARHoseGrabber.cs)
+/// - Spray HANYA nyala jika: PIN sudah dicabut AND tangan kiri sedang grip hose
+/// - Saat grip hose dilepas → spray langsung mati
+/// </summary>
 public class AutoFireExtinguisher : MonoBehaviour
 {
     [Header("Referensi Spray & Audio")]
@@ -14,33 +22,42 @@ public class AutoFireExtinguisher : MonoBehaviour
     [Tooltip("Jarak tembak asap APAR dalam meter")]
     public float extinguishRange = 4f;
 
-    [Header("Mode Semprot Otomatis")]
-    public bool autoSprayOnGrab = true;
+    [Header("Mekanisme Pin APAR")]
+    [Tooltip("Apakah pin sudah dicabut? Diatur otomatis oleh script APARPin saat pin di-grab.")]
+    public bool pinPulled = false;
 
     [Header("Offset Pegangan Tangan")]
-    [Tooltip("Geser posisi APAR relatif terhadap tangan")]
+    [Tooltip("Geser posisi APAR relatif terhadap tangan kanan")]
     public Vector3 handOffsetPosition = Vector3.zero;
-    [Tooltip("Putar rotasi APAR relatif terhadap tangan")]
+    [Tooltip("Putar rotasi APAR relatif terhadap tangan kanan")]
     public Vector3 handOffsetRotation = Vector3.zero;
 
     [Header("Testing / Debug")]
+    [Tooltip("Tekan Space/G di keyboard untuk toggle spray saat testing di Editor")]
     public bool debugForceSpray = false;
 
+    // ── Referensi internal ──────────────────────────────────────────────────
     private XRGrabInteractable grabInteractable;
     private AudioSource audioSource;
+    private bool isAttachedToHand = false;
     private bool isTestingActive = false;
 
-    // Status attachment ke tangan
-    private bool isAttachedToHand = false;
-
+    // ── Status genggaman (di-set dari luar oleh APARHoseGrabber) ───────────
     [HideInInspector] public bool isMainHandleHeld = false;
     [HideInInspector] public bool isHoseHeld = false;
+
+    // ── State spray internal ────────────────────────────────────────────────
+    private bool wasSprayingLastFrame = false;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  UNITY LIFECYCLE
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void Awake()
     {
         grabInteractable = GetComponent<XRGrabInteractable>();
 
-        // Mengatur Rigidbody awal agar tidak jatuh di dinding saat game di-play
+        // Kunci fisika agar APAR tidak jatuh saat game dimulai
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -48,6 +65,7 @@ public class AutoFireExtinguisher : MonoBehaviour
             rb.useGravity = false;
         }
 
+        // Setup audio
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.clip = sprayAudioClip;
@@ -56,6 +74,7 @@ public class AutoFireExtinguisher : MonoBehaviour
         audioSource.spatialBlend = 1f;
         audioSource.volume = sprayVolume;
 
+        // Setup particle spray — pastikan mati di awal
         if (sprayEffect == null)
             sprayEffect = GetComponentInChildren<ParticleSystem>();
 
@@ -63,12 +82,20 @@ public class AutoFireExtinguisher : MonoBehaviour
         {
             var main = sprayEffect.main;
             main.playOnAwake = false;
-            var em = sprayEffect.emission;
-            em.enabled = true;
-
             if (sprayEffect.isPlaying)
                 sprayEffect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
+
+        // ⚠️ PAKSA RESET — override nilai Inspector lama yang mungkin masih true
+        // Ini mencegah spray nyala otomatis saat game dimulai
+        pinPulled          = false;
+        debugForceSpray    = false;
+        isTestingActive    = false;
+        wasSprayingLastFrame = false;
+        isAttachedToHand   = false;
+        isMainHandleHeld   = false;
+        isHoseHeld         = false;
+        Debug.Log("[APAR] State direset. Cabut pin dulu sebelum bisa spray.");
     }
 
     private void OnEnable()
@@ -88,27 +115,70 @@ public class AutoFireExtinguisher : MonoBehaviour
             grabInteractable.selectEntered.RemoveListener(OnGrabEnter);
             grabInteractable.selectExited.RemoveListener(OnGrabExit);
         }
+        // Pastikan spray mati jika object dinonaktifkan
         StopSpray();
     }
+
+    private void Update()
+    {
+        // Update status genggaman handle utama (hanya jika belum attached ke tangan)
+        if (grabInteractable != null && !isAttachedToHand)
+        {
+            isMainHandleHeld = grabInteractable.isSelected || grabInteractable.interactorsSelecting.Count > 0;
+        }
+
+        // Keyboard shortcut untuk testing di Editor (Space atau G)
+        if (Keyboard.current != null &&
+            (Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.gKey.wasPressedThisFrame))
+        {
+            isTestingActive = !isTestingActive;
+            Debug.Log("[APAR] Debug spray toggled: " + isTestingActive);
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // KONDISI SPRAY — satu-satunya tempat logika spray
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Normal play: pin HARUS dicabut + hose HARUS sedang digenggam
+        bool shouldSpray = (pinPulled && isHoseHeld) || isTestingActive || debugForceSpray;
+
+        // Nyalakan/matikan spray hanya saat ada perubahan state (efisien)
+        if (shouldSpray && !wasSprayingLastFrame)
+        {
+            StartSpray();
+        }
+        else if (!shouldSpray && wasSprayingLastFrame)
+        {
+            StopSpray();
+        }
+
+        wasSprayingLastFrame = shouldSpray;
+
+        // Lakukan penghitungan pemadam jika spray aktif
+        if (shouldSpray)
+        {
+            ExtinguishFiresGradually();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  GRAB EVENTS — hanya mengurus attachment APAR ke tangan, BUKAN spray
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void OnGrabEnter(SelectEnterEventArgs args)
     {
         isMainHandleHeld = true;
 
-        // Kunci APAR sebagai anak (Child) dari controller tangan
+        // Kunci APAR sebagai child dari controller tangan kanan (hanya sekali)
         if (!isAttachedToHand && args.interactorObject != null)
         {
             isAttachedToHand = true;
 
-            // 1. Pindahkan parent ke tangan
             Transform handTransform = args.interactorObject.transform;
             transform.SetParent(handTransform);
-
-            // 2. Reset posisi & rotasi lokal agar menempel di tangan
             transform.localPosition = handOffsetPosition;
             transform.localRotation = Quaternion.Euler(handOffsetRotation);
 
-            // 3. Matikan fisika
+            // Matikan fisika agar tidak goyang
             Rigidbody rb = GetComponent<Rigidbody>();
             if (rb != null)
             {
@@ -116,66 +186,39 @@ public class AutoFireExtinguisher : MonoBehaviour
                 rb.useGravity = false;
             }
 
-            // 4. Matikan XRGrabInteractable agar sistem XR tidak lagi menarik/menggeser APAR
+            // Nonaktifkan XRGrabInteractable setelah ter-attach
             if (grabInteractable != null)
-            {
                 grabInteractable.enabled = false;
-            }
+
+            Debug.Log("[APAR] APAR ter-attach ke tangan kanan.");
         }
 
-        if (autoSprayOnGrab) StartSpray();
+        // ❌ TIDAK ada StartSpray() di sini — spray hanya dari Update()
     }
 
     private void OnGrabExit(SelectExitEventArgs args)
     {
-        // Jika sudah menempel di tangan, paksa status dipegang tetap true
+        // Jika sudah menempel di tangan, pertahankan status isMainHandleHeld
         if (isAttachedToHand)
         {
             isMainHandleHeld = true;
-            return; 
+            return;
         }
 
         isMainHandleHeld = false;
-        if (!isHoseHeld && !isTestingActive && !debugForceSpray)
-        {
-            StopSpray();
-        }
+        // ❌ TIDAK ada StopSpray() di sini — spray hanya dikontrol dari Update()
     }
 
-    private void Update()
-    {
-        if (grabInteractable != null && !isAttachedToHand)
-        {
-            isMainHandleHeld = grabInteractable.isSelected || grabInteractable.interactorsSelecting.Count > 0;
-        }
-
-        if (Keyboard.current != null && (Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.gKey.wasPressedThisFrame))
-        {
-            ToggleTesting();
-        }
-
-        bool isAnyPartHeld = isMainHandleHeld || isHoseHeld || isAttachedToHand;
-        bool shouldSpray = (isAnyPartHeld && autoSprayOnGrab) || isTestingActive || debugForceSpray;
-
-        if (shouldSpray)
-        {
-            if (sprayEffect != null && !sprayEffect.isPlaying) StartSpray();
-
-            ExtinguishFiresGradually();
-        }
-        else
-        {
-            if (sprayEffect != null && sprayEffect.isPlaying) StopSpray();
-        }
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    //  EKSTINGSI API
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void ExtinguishFiresGradually()
     {
         Transform nozzle = sprayEffect != null ? sprayEffect.transform : transform;
-        Debug.DrawRay(nozzle.position, nozzle.forward * extinguishRange, Color.red);
+        Debug.DrawRay(nozzle.position, nozzle.forward * extinguishRange, Color.cyan);
 
         RaycastHit[] hits = Physics.SphereCastAll(nozzle.position, 0.4f, nozzle.forward, extinguishRange);
-
         foreach (RaycastHit hit in hits)
         {
             FireExtinguisherTarget target = hit.collider.GetComponentInParent<FireExtinguisherTarget>();
@@ -186,36 +229,34 @@ public class AutoFireExtinguisher : MonoBehaviour
         }
     }
 
-    private void ToggleTesting()
-    {
-        isTestingActive = !isTestingActive;
-        Debug.Log("[AutoFireExtinguisher] Debug spray toggled: " + isTestingActive);
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    //  START / STOP SPRAY
+    // ═══════════════════════════════════════════════════════════════════════
 
     public void StartSpray()
     {
         if (sprayEffect != null)
         {
-            if (!sprayEffect.gameObject.activeSelf) sprayEffect.gameObject.SetActive(true);
-            if (!sprayEffect.isPlaying) sprayEffect.Play(true);
+            if (!sprayEffect.gameObject.activeSelf)
+                sprayEffect.gameObject.SetActive(true);
+            if (!sprayEffect.isPlaying)
+                sprayEffect.Play(true);
         }
 
         if (audioSource != null && sprayAudioClip != null && !audioSource.isPlaying)
-        {
             audioSource.Play();
-        }
+
+        Debug.Log("[APAR] ✅ Spray NYALA — pin dicabut & hose digenggam.");
     }
 
     public void StopSpray()
     {
         if (sprayEffect != null && sprayEffect.isPlaying)
-        {
             sprayEffect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        }
 
         if (audioSource != null && audioSource.isPlaying)
-        {
             audioSource.Stop();
-        }
+
+        Debug.Log("[APAR] 🚫 Spray MATI.");
     }
 }

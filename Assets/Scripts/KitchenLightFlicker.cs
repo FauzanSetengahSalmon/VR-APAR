@@ -1,9 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Efek kedip ringan pada lampu neon dapur.
-/// Tempatkan pada GameObject Light (Point/Spot/Area).
-/// </summary>
+
 public class KitchenLightFlicker : MonoBehaviour
 {
     [Header("Pengaturan Lampu")]

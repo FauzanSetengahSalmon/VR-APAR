@@ -1,9 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Pasang script ini pada Point Light di bawah/dekat api.
-/// Membuat cahaya api berkedip secara acak untuk tampilan realistis.
-/// </summary>
+
 public class FireFlicker : MonoBehaviour
 {
     [Header("Pengaturan Flicker")]

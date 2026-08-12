@@ -1,11 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Pengelola banyak titik api (Multiple Fires Manager).
-/// Memantau semua titik api di dapur (kompor, meja, tabung gas, dinding).
-/// Menampilkan notifikasi / suara sukses ketika SEMUA api berhasil dipadamkan!
-/// </summary>
+
 public class FireManager : MonoBehaviour
 {
     [Header("Daftar Api")]
