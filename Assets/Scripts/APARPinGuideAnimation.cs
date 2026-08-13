@@ -11,6 +11,12 @@ public class APARPinGuideAnimation : MonoBehaviour
     public AutoFireExtinguisher mainExtinguisher;
     public XRGrabInteractable grabInteractable;
 
+    // ── TAMBAHAN POSTER ──────────────────────────────────────────────────────
+    [Header("Referensi Poster Environment")]
+    [Tooltip("Masukkan GameObject 'APAR_Safety_Poster 1' dari Hierarchy ke sini")]
+    public GameObject safetyPoster; 
+    // ─────────────────────────────────────────────────────────────────────────
+
     [Header("Gambar Controller Asli (Optional)")]
     [Tooltip("Masukkan File Gambar/Sprite Controller Meta Quest 3 kamu di sini")]
     public Sprite controllerRealSprite;
@@ -56,6 +62,13 @@ public class APARPinGuideAnimation : MonoBehaviour
         }
 
         CreateCleanGuideUI();
+
+        // ── TAMBAHAN POSTER ──
+        // Sembunyikan poster saat awal game berjalan
+        if (safetyPoster != null)
+        {
+            safetyPoster.SetActive(false);
+        }
     }
 
     private void OnDestroy()
@@ -215,7 +228,7 @@ public class APARPinGuideAnimation : MonoBehaviour
 
     /// <summary>
     /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
-    /// Canvas panduan APAR akan tampil dan grab APAR aktif.
+    /// Canvas panduan APAR dan Poster Safety akan tampil.
     /// </summary>
     public void SetMissionStarted()
     {
@@ -224,6 +237,14 @@ public class APARPinGuideAnimation : MonoBehaviour
         {
             guideCanvasGO.SetActive(true);
             Debug.Log("[APARPinGuide] ✅ Misi dimulai — panduan APAR ditampilkan!");
+        }
+
+        // ── TAMBAHAN POSTER ──
+        // Munculkan poster di wall pas tahan hold 3 detik selesai
+        if (safetyPoster != null)
+        {
+            safetyPoster.SetActive(true);
+            Debug.Log("[APARPinGuide] 🖼️ Poster K3 dimunculkan!");
         }
     }
 
