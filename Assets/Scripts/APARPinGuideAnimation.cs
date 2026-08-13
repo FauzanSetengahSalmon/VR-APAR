@@ -1,69 +1,88 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-/// <summary>
-/// Animasi Guide & Petunjuk Visual VR untuk Cabut Pin APAR.
-/// 
-/// FUNGSI:
-///   1. Meng-highlight posisi Pin (`wire_ring_low`) dengan efek animasi pulsa glowing.
-///   2. Menampilkan UI World-Space melayang di atas pin: "CABUT PIN DULU ➔".
-///   3. Membuat animasi gerak panah tarik (pull animation) yang menunjuk arah cabut pin.
-///   4. Otomatis HILANG saat pin berhasil dicabut!
-/// </summary>
 public class APARPinGuideAnimation : MonoBehaviour
 {
-    [Header("Referensi (Auto-Find jika kosong)")]
-    [Tooltip("Transform dari Ring / Pin APAR (misal: wire_ring_low)")]
+    [Header("Referensi APAR & Pin")]
     public Transform pinTransform;
-
-    [Tooltip("Script AutoFireExtinguisher utama")]
     public AutoFireExtinguisher mainExtinguisher;
+    public XRGrabInteractable grabInteractable;
 
-    [Header("Pengaturan Animasi Teks UI")]
-    public float uiHeightAbovePin = 0.28f;
-    public float uiScale = 0.0018f;
-    public Color guideColor = new Color(1f, 0.85f, 0.1f); // Kuning terang glowing
+    [Header("Gambar Controller Asli (Optional)")]
+    [Tooltip("Masukkan File Gambar/Sprite Controller Meta Quest 3 kamu di sini")]
+    public Sprite controllerRealSprite;
 
-    // ── Private Cache ──────────────────────────────────────────────────────
+    [Header("Pengaturan UI VR")]
+    public float uiHeightAbovePin = 0.35f;
+    public float uiScale = 0.001f;
+
+    // Private Cache
     private GameObject guideCanvasGO;
-    private CanvasGroup canvasGroup;
     private TextMeshProUGUI mainLabelText;
-    private TextMeshProUGUI arrowAnimText;
+    private TextMeshProUGUI subLabelText;
+    private Image controllerImageUI;
     private Camera mainCamera;
     private bool isGuideActive = true;
+    private bool isAPARGrabbed = false;
     private Vector3 initialPinScale;
 
     private void Start()
     {
-        // 1. Auto-find AutoFireExtinguisher
-        if (mainExtinguisher == null)
-            mainExtinguisher = GetComponent<AutoFireExtinguisher>();
-        if (mainExtinguisher == null)
-            mainExtinguisher = GetComponentInParent<AutoFireExtinguisher>();
+        // Auto-find components
+        if (mainExtinguisher == null) mainExtinguisher = GetComponentInParent<AutoFireExtinguisher>();
+        if (grabInteractable == null) grabInteractable = GetComponentInParent<XRGrabInteractable>();
 
-        // 2. Auto-find Pin Transform (wire_ring_low) jika belum di-assign
-        if (pinTransform == null)
+        if (pinTransform == null && mainExtinguisher != null)
         {
-            Transform foundRing = transform.Find("wire_ring_low");
-            if (foundRing == null) foundRing = transform.Find("wire_p1_low");
+            Transform foundRing = mainExtinguisher.transform.Find("wire_ring_low");
             if (foundRing != null) pinTransform = foundRing;
         }
 
-        if (pinTransform != null)
-            initialPinScale = pinTransform.localScale;
-
+        if (pinTransform != null) initialPinScale = pinTransform.localScale;
         mainCamera = Camera.main;
 
-        // 3. Buat UI Guide
-        CreateGuideUI();
+        // Pasang Event Detector dari XR Grab Interactable
+        if (grabInteractable != null)
+        {
+            grabInteractable.selectEntered.AddListener(OnAPARGrabbed);
+            grabInteractable.selectExited.AddListener(OnAPARReleased);
+        }
+
+        CreateCleanGuideUI();
+    }
+
+    private void OnDestroy()
+    {
+        if (grabInteractable != null)
+        {
+            grabInteractable.selectEntered.RemoveListener(OnAPARGrabbed);
+            grabInteractable.selectExited.RemoveListener(OnAPARReleased);
+        }
+        if (guideCanvasGO != null) Destroy(guideCanvasGO);
+    }
+
+    // Fungsi yang OTOMATIS dipanggil saat tangan VR memegang APAR
+    private void OnAPARGrabbed(SelectEnterEventArgs args)
+    {
+        isAPARGrabbed = true;
+        UpdateUIState();
+    }
+
+    // Fungsi dipanggil saat APAR dilepas
+    private void OnAPARReleased(SelectExitEventArgs args)
+    {
+        isAPARGrabbed = false;
+        UpdateUIState();
     }
 
     private void Update()
     {
         if (!isGuideActive) return;
 
-        // Jika pin sudah dicabut ➔ HENTIKAN & SEMBUNYIKAN ANIMASI
+        // Jika Pin sudah dicabut ➔ Hapus UI
         if (mainExtinguisher != null && mainExtinguisher.pinPulled)
         {
             HideGuide();
@@ -72,130 +91,117 @@ public class APARPinGuideAnimation : MonoBehaviour
 
         if (mainCamera == null) mainCamera = Camera.main;
 
-        // ── A. Animasi Pulsa Glowing pada Pin (wire_ring_low) ───────────────
-        if (pinTransform != null)
+        // Efek Pulsa Pin jika APAR sudah dipegang
+        if (isAPARGrabbed && pinTransform != null)
         {
-            float pulseScale = 1f + Mathf.Sin(Time.time * 4f) * 0.08f;
-            pinTransform.localScale = initialPinScale * pulseScale;
+            float pulse = 1f + Mathf.Sin(Time.time * 5f) * 0.08f;
+            pinTransform.localScale = initialPinScale * pulse;
         }
 
-        // ── B. Update Posisi UI Melayang + Billboard (Hadap Kamera VR) ──────
+        // Billboard UI (Selalu Menghadap Kamera VR)
         if (guideCanvasGO != null)
         {
             Vector3 targetPos = (pinTransform != null) ? pinTransform.position : transform.position;
-            float bobbing = Mathf.Sin(Time.time * 3f) * 0.02f;
-            guideCanvasGO.transform.position = targetPos + Vector3.up * (uiHeightAbovePin + bobbing);
+            float floatEffect = Mathf.Sin(Time.time * 2.5f) * 0.012f;
+            guideCanvasGO.transform.position = targetPos + Vector3.up * (uiHeightAbovePin + floatEffect);
 
             if (mainCamera != null)
             {
                 guideCanvasGO.transform.LookAt(mainCamera.transform.position);
                 guideCanvasGO.transform.Rotate(0f, 180f, 0f);
             }
-
-            // Opacity pulsing
-            if (canvasGroup != null)
-                canvasGroup.alpha = Mathf.Lerp(0.6f, 1.0f, (Mathf.Sin(Time.time * 5f) + 1f) * 0.5f);
-        }
-
-        // ── C. Animasi Panah Tarik (Pull Arrow Animation) ───────────────────
-        if (arrowAnimText != null)
-        {
-            int step = (int)(Time.time * 4f) % 4;
-            switch (step)
-            {
-                case 0: arrowAnimText.text = "> >"; break;
-                case 1: arrowAnimText.text = "> > >"; break;
-                case 2: arrowAnimText.text = "> > > >"; break;
-                case 3: arrowAnimText.text = ">"; break;
-            }
         }
     }
 
-    private void CreateGuideUI()
+    private void UpdateUIState()
     {
-        guideCanvasGO = new GameObject("APAR_Pin_Guide_UI");
+        if (!isAPARGrabbed)
+        {
+            // TAHAP 1
+            if (mainLabelText != null) mainLabelText.text = "AMBIL APAR";
+            if (subLabelText != null) subLabelText.text = "Tekan & Tahan tombol <color=#00DCFF>GRIP</color> Samping";
+        }
+        else
+        {
+            // TAHAP 2
+            if (mainLabelText != null) mainLabelText.text = "TARIK PIN APAR";
+            if (subLabelText != null) subLabelText.text = "Tekan <color=#00DCFF>TRIGGER</color> & Tarik Pin";
+        }
+    }
+
+    private void CreateCleanGuideUI()
+    {
+        guideCanvasGO = new GameObject("APAR_Guide_UI");
         guideCanvasGO.transform.SetParent(null);
 
         Canvas canvas = guideCanvasGO.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
-        canvas.sortingOrder = 50;
+        canvas.sortingOrder = 100;
 
-        canvasGroup = guideCanvasGO.AddComponent<CanvasGroup>();
-        canvasGroup.interactable = false;
-        canvasGroup.blocksRaycasts = false;
+        CanvasGroup cg = guideCanvasGO.AddComponent<CanvasGroup>();
+        cg.interactable = false;
+        cg.blocksRaycasts = false;
 
         RectTransform canvasRT = guideCanvasGO.GetComponent<RectTransform>();
-        canvasRT.sizeDelta = new Vector2(400f, 160f);
+        canvasRT.sizeDelta = new Vector2(480f, 160f);
         canvasRT.localScale = Vector3.one * uiScale;
 
-        // Background Panel Glowing
-        GameObject bgGO = new GameObject("BG");
+        // Background Dark Glass Panel
+        GameObject bgGO = new GameObject("CardBG");
         bgGO.transform.SetParent(guideCanvasGO.transform, false);
         Image bgImg = bgGO.AddComponent<Image>();
-        bgImg.color = new Color(0.08f, 0.08f, 0.1f, 0.85f);
+        bgImg.color = new Color(0.06f, 0.07f, 0.1f, 0.9f);
         RectTransform bgRT = bgGO.GetComponent<RectTransform>();
         bgRT.anchorMin = Vector2.zero;
         bgRT.anchorMax = Vector2.one;
-        bgRT.offsetMin = Vector2.zero;
-        bgRT.offsetMax = Vector2.zero;
+        bgRT.sizeDelta = Vector2.zero;
 
-        // Border Glowing Kuning
-        GameObject borderGO = new GameObject("Border");
-        borderGO.transform.SetParent(guideCanvasGO.transform, false);
-        Image borderImg = borderGO.AddComponent<Image>();
-        borderImg.color = guideColor;
-        RectTransform borderRT = borderGO.GetComponent<RectTransform>();
-        borderRT.anchorMin = Vector2.zero;
-        borderRT.anchorMax = Vector2.one;
-        borderRT.offsetMin = new Vector2(-4, -4);
-        borderRT.offsetMax = new Vector2(4, 4);
-        borderGO.transform.SetSiblingIndex(0);
+        // Container Gambar Controller Real
+        GameObject imgGO = new GameObject("ControllerImage");
+        imgGO.transform.SetParent(guideCanvasGO.transform, false);
+        controllerImageUI = imgGO.AddComponent<Image>();
+        if (controllerRealSprite != null) controllerImageUI.sprite = controllerRealSprite;
+        else controllerImageUI.color = new Color(0.2f, 0.2f, 0.25f);
 
-        // Teks Utama: "CABUT PIN DULU!"
-        GameObject labelGO = new GameObject("MainLabel");
-        labelGO.transform.SetParent(guideCanvasGO.transform, false);
-        mainLabelText = labelGO.AddComponent<TextMeshProUGUI>();
-        mainLabelText.text = "CABUT PIN DULU!";
-        mainLabelText.fontSize = 36;
-        mainLabelText.color = guideColor;
+        RectTransform imgRT = imgGO.GetComponent<RectTransform>();
+        imgRT.anchoredPosition = new Vector2(-150f, 0f);
+        imgRT.sizeDelta = new Vector2(110f, 110f);
+
+        // Container Teks
+        GameObject textContainer = new GameObject("TextGroup");
+        textContainer.transform.SetParent(guideCanvasGO.transform, false);
+        RectTransform textContainerRT = textContainer.AddComponent<RectTransform>();
+        textContainerRT.anchoredPosition = new Vector2(40f, 0f);
+        textContainerRT.sizeDelta = new Vector2(300f, 120f);
+
+        GameObject titleGO = new GameObject("TitleText");
+        titleGO.transform.SetParent(textContainer.transform, false);
+        mainLabelText = titleGO.AddComponent<TextMeshProUGUI>();
+        mainLabelText.fontSize = 30;
+        mainLabelText.color = Color.white;
         mainLabelText.fontStyle = FontStyles.Bold;
-        mainLabelText.alignment = TextAlignmentOptions.Center;
-        RectTransform labelRT = labelGO.GetComponent<RectTransform>();
-        labelRT.anchoredPosition = new Vector2(0f, 20f);
-        labelRT.sizeDelta = new Vector2(380f, 60f);
+        mainLabelText.alignment = TextAlignmentOptions.Left;
+        RectTransform titleRT = titleGO.GetComponent<RectTransform>();
+        titleRT.anchoredPosition = new Vector2(0f, 20f);
+        titleRT.sizeDelta = new Vector2(300f, 45f);
 
-        // Teks Animasi Panah Tarik (Gunakan ASCII >>> agar kompatibel dengan Font TextMeshPro)
-        GameObject arrowGO = new GameObject("ArrowAnim");
-        arrowGO.transform.SetParent(guideCanvasGO.transform, false);
-        arrowAnimText = arrowGO.AddComponent<TextMeshProUGUI>();
-        arrowAnimText.text = ">>>";
-        arrowAnimText.fontSize = 42;
-        arrowAnimText.color = Color.white;
-        arrowAnimText.fontStyle = FontStyles.Bold;
-        arrowAnimText.alignment = TextAlignmentOptions.Center;
-        RectTransform arrowRT = arrowGO.GetComponent<RectTransform>();
-        arrowRT.anchoredPosition = new Vector2(0f, -35f);
-        arrowRT.sizeDelta = new Vector2(380f, 50f);
+        GameObject subGO = new GameObject("SubText");
+        subGO.transform.SetParent(textContainer.transform, false);
+        subLabelText = subGO.AddComponent<TextMeshProUGUI>();
+        subLabelText.fontSize = 18;
+        subLabelText.color = new Color(0.85f, 0.88f, 0.92f);
+        subLabelText.alignment = TextAlignmentOptions.Left;
+        RectTransform subRT = subGO.GetComponent<RectTransform>();
+        subRT.anchoredPosition = new Vector2(0f, -22f);
+        subRT.sizeDelta = new Vector2(300f, 50f);
+
+        UpdateUIState();
     }
 
     private void HideGuide()
     {
         isGuideActive = false;
-
-        // Reset ukuran pin ke semula
-        if (pinTransform != null)
-            pinTransform.localScale = initialPinScale;
-
-        // Hapus UI Guide
-        if (guideCanvasGO != null)
-            Destroy(guideCanvasGO);
-
-        Debug.Log("[APARPinGuide] ✅ Pin berhasil dicabut! Petunjuk animasi selesai.");
-    }
-
-    private void OnDestroy()
-    {
-        if (guideCanvasGO != null)
-            Destroy(guideCanvasGO);
+        if (pinTransform != null) pinTransform.localScale = initialPinScale;
+        if (guideCanvasGO != null) Destroy(guideCanvasGO);
     }
 }

@@ -68,5 +68,11 @@ public class FireManager : MonoBehaviour
         {
             victorySmokeEffect.Play();
         }
+
+        // Tampilkan Kotak Hasil & Grade Penilaian di UI
+        if (VRSimulationUIManager.Instance != null)
+        {
+            VRSimulationUIManager.Instance.OnMissionCompleted(VRSimulationUIManager.Instance.missionTimer);
+        }
     }
 }

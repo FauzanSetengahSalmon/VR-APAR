@@ -184,6 +184,12 @@ public class AutoFireExtinguisher : MonoBehaviour
     {
         isMainHandleHeld = true;
 
+        if (args.interactorObject != null)
+        {
+            VRHandAnimator handAnim = args.interactorObject.transform.GetComponentInParent<VRHandAnimator>();
+            if (handAnim != null) handAnim.SetForceGrip(true);
+        }
+
         // Kunci APAR sebagai child dari controller tangan kanan (hanya sekali)
         if (!isAttachedToHand && args.interactorObject != null)
         {
