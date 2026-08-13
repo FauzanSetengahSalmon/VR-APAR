@@ -56,6 +56,10 @@ public class APARPinIndicator : MonoBehaviour
     private bool isHidden = false;
     private bool isCreated = false;
 
+    // ── Mission Lock ─────────────────────────────────────────────────────────
+    // UI indikator disembunyikan sampai misi resmi dimulai
+    private bool isMissionStarted = false;
+
     // ═══════════════════════════════════════════════════════════════════════
     //  UNITY LIFECYCLE
     // ═══════════════════════════════════════════════════════════════════════
@@ -73,7 +77,8 @@ public class APARPinIndicator : MonoBehaviour
 
     private void Update()
     {
-        if (isHidden || !isCreated) return;
+        // Jangan update jika misi belum dimulai, sudah disembunyikan, atau belum dibuat
+        if (!isMissionStarted || isHidden || !isCreated) return;
 
         // Cek pin sudah dicabut → sembunyikan indikator
         if (mainExtinguisher != null && mainExtinguisher.pinPulled)
@@ -201,7 +206,29 @@ public class APARPinIndicator : MonoBehaviour
         subRT.sizeDelta = new Vector2(380f, 40f);
 
         isCreated = true;
-        Debug.Log("[APARPinIndicator] Indikator pin berhasil dibuat.");
+
+        // Sembunyikan dulu sampai misi dimulai
+        canvasGO.SetActive(false);
+
+        Debug.Log("[APARPinIndicator] Indikator pin berhasil dibuat (disembunyikan sampai misi dimulai).");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  KONTROL MISI
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
+    /// Indikator pin akan muncul dan aktif.
+    /// </summary>
+    public void SetMissionStarted()
+    {
+        isMissionStarted = true;
+        if (canvasGO != null && !isHidden)
+        {
+            canvasGO.SetActive(true);
+            Debug.Log("[APARPinIndicator] ✅ Misi dimulai — indikator pin ditampilkan!");
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════

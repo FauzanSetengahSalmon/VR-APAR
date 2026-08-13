@@ -29,6 +29,10 @@ public class APARPinGuideAnimation : MonoBehaviour
     private bool isAPARGrabbed = false;
     private Vector3 initialPinScale;
 
+    // ── Mission Lock ─────────────────────────────────────────────────────────
+    // Semua UI & grab APAR dikunci sampai misi resmi dimulai
+    private bool isMissionStarted = false;
+
     private void Start()
     {
         // Auto-find components
@@ -67,6 +71,13 @@ public class APARPinGuideAnimation : MonoBehaviour
     // Fungsi yang OTOMATIS dipanggil saat tangan VR memegang APAR
     private void OnAPARGrabbed(SelectEnterEventArgs args)
     {
+        // Blokir grab sebelum misi dimulai
+        if (!isMissionStarted)
+        {
+            Debug.Log("[APARPinGuide] 🔒 Grab APAR diblokir — misi belum dimulai!");
+            return;
+        }
+
         isAPARGrabbed = true;
         UpdateUIState();
     }
@@ -80,7 +91,8 @@ public class APARPinGuideAnimation : MonoBehaviour
 
     private void Update()
     {
-        if (!isGuideActive) return;
+        // Jangan update UI sebelum misi dimulai
+        if (!isMissionStarted || !isGuideActive) return;
 
         // Jika Pin sudah dicabut ➔ Hapus UI
         if (mainExtinguisher != null && mainExtinguisher.pinPulled)
@@ -195,7 +207,24 @@ public class APARPinGuideAnimation : MonoBehaviour
         subRT.anchoredPosition = new Vector2(0f, -22f);
         subRT.sizeDelta = new Vector2(300f, 50f);
 
+        // Sembunyikan canvas sampai misi dimulai
+        guideCanvasGO.SetActive(false);
+
         UpdateUIState();
+    }
+
+    /// <summary>
+    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
+    /// Canvas panduan APAR akan tampil dan grab APAR aktif.
+    /// </summary>
+    public void SetMissionStarted()
+    {
+        isMissionStarted = true;
+        if (guideCanvasGO != null && !mainExtinguisher.pinPulled)
+        {
+            guideCanvasGO.SetActive(true);
+            Debug.Log("[APARPinGuide] ✅ Misi dimulai — panduan APAR ditampilkan!");
+        }
     }
 
     private void HideGuide()

@@ -49,6 +49,10 @@ public class AutoFireExtinguisher : MonoBehaviour
     // ── State spray internal ────────────────────────────────────────────────
     private bool wasSprayingLastFrame = false;
 
+    // ── Mission Lock ─────────────────────────────────────────────────────────
+    // Grab body APAR dikunci sampai misi dimulai
+    private bool isMissionStarted = false;
+
     // ═══════════════════════════════════════════════════════════════════════
     //  UNITY LIFECYCLE
     // ═══════════════════════════════════════════════════════════════════════
@@ -98,6 +102,11 @@ public class AutoFireExtinguisher : MonoBehaviour
         isAttachedToHand   = false;
         isMainHandleHeld   = false;
         isHoseHeld         = false;
+
+        // Kunci grab APAR sampai misi dimulai
+        if (grabInteractable != null)
+            grabInteractable.enabled = false;
+
         Debug.Log("[APAR] State direset. Cabut pin dulu sebelum bisa spray.");
     }
 
@@ -176,12 +185,32 @@ public class AutoFireExtinguisher : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
+    /// Setelah dipanggil, body APAR bisa di-grab.
+    /// </summary>
+    public void SetMissionStarted()
+    {
+        isMissionStarted = true;
+        // Aktifkan kembali XRGrabInteractable agar APAR bisa dipegang
+        if (grabInteractable != null)
+            grabInteractable.enabled = true;
+        Debug.Log("[APAR] ✅ Misi dimulai — grab body APAR sekarang aktif!");
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     //  GRAB EVENTS — hanya mengurus attachment APAR ke tangan, BUKAN spray
     // ═══════════════════════════════════════════════════════════════════════
 
     private void OnGrabEnter(SelectEnterEventArgs args)
     {
+        // Blokir grab sebelum misi dimulai
+        if (!isMissionStarted)
+        {
+            Debug.Log("[APAR] 🔒 Grab body APAR diblokir — misi belum dimulai!");
+            return;
+        }
+
         isMainHandleHeld = true;
 
         if (args.interactorObject != null)

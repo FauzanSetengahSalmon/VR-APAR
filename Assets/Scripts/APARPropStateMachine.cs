@@ -104,6 +104,10 @@ public class APARPropStateMachine : MonoBehaviour
     // Tracker state tombol pin fisik (untuk mendeteksi transisi lepas)
     private bool previousPinButtonState = false;
 
+    // ── Mission Lock ─────────────────────────────────────────────────────────
+    // Semua interaksi APAR dikunci sampai misi resmi dimulai (setelah hold Mulai Misi)
+    private bool isMissionStarted = false;
+
     // ═══════════════════════════════════════════════════════════════════════
     //  UNITY LIFECYCLE
     // ═══════════════════════════════════════════════════════════════════════
@@ -151,8 +155,21 @@ public class APARPropStateMachine : MonoBehaviour
     /// <summary>
     /// Memeriksa apakah pin pengaman sudah dicabut (dari physical prop / VR pin / Keyboard)
     /// </summary>
+    /// <summary>
+    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
+    /// Setelah dipanggil, semua input pin dan lever APAR akan aktif.
+    /// </summary>
+    public void SetMissionStarted()
+    {
+        isMissionStarted = true;
+        Debug.Log("[APARProp] ✅ Misi dimulai — input APAR sekarang aktif!");
+    }
+
     private void CheckPinStateInput()
     {
+        // Kunci semua input sebelum misi dimulai
+        if (!isMissionStarted) return;
+
         if (currentState != APARState.SafetyPinLocked) return;
 
         bool pinReleasedTriggered = false;
@@ -192,6 +209,9 @@ public class APARPropStateMachine : MonoBehaviour
     /// </summary>
     private void CheckLeverInput()
     {
+        // Kunci semua input sebelum misi dimulai
+        if (!isMissionStarted) return;
+
         // Jika pin masih terpasang, gagang TIDAK BISA menyemprot
         if (currentState == APARState.SafetyPinLocked)
         {

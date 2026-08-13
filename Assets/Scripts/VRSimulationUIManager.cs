@@ -130,7 +130,75 @@ public class VRSimulationUIManager : MonoBehaviour
         // Terapkan custom icons dari Inspector (harus setelah BuildUIComponents di Awake)
         ApplyCustomIcons();
 
+        // Kunci semua interaksi APAR sampai misi dimulai
+        LockAllAPAR();
+
         SetPhase(UIPhase.StartLanding);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  MISSION LOCK SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Kunci semua interaksi APAR di scene (dipanggil di awal sebelum misi dimulai).
+    /// Semua grab, pin, spray, dan UI indikator akan tidak aktif.
+    /// </summary>
+    private void LockAllAPAR()
+    {
+        // APARPropStateMachine — kunci logic pin dan lever
+        // (tidak perlu action khusus: isMissionStarted = false sudah by default)
+
+        // APARPinIndicator — canvas sudah disembunyikan otomatis saat dibuat
+        // (tidak perlu action khusus)
+
+        // APARHoseGrabber — isMissionStarted sudah false by default
+        // (tidak perlu action khusus)
+
+        // APARPin — isMissionStarted sudah false by default
+        // (tidak perlu action khusus)
+
+        Debug.Log("[VRUIManager] 🔒 Semua interaksi APAR dikunci. Tunggu hold Mulai Misi.");
+    }
+
+    /// <summary>
+    /// Buka kunci semua interaksi APAR di scene (dipanggil setelah animasi selesai, misi aktif).
+    /// </summary>
+    private void UnlockAllAPAR()
+    {
+        // Buka kunci semua APARPropStateMachine
+        var propStateMachines = FindObjectsByType<APARPropStateMachine>(FindObjectsSortMode.None);
+        foreach (var psm in propStateMachines)
+            psm.SetMissionStarted();
+
+        // Tampilkan semua APARPinIndicator
+        var pinIndicators = FindObjectsByType<APARPinIndicator>(FindObjectsSortMode.None);
+        foreach (var pi in pinIndicators)
+            pi.SetMissionStarted();
+
+        // Buka kunci semua APARHoseGrabber
+        var hoseGrabbers = FindObjectsByType<APARHoseGrabber>(FindObjectsSortMode.None);
+        foreach (var hg in hoseGrabbers)
+            hg.SetMissionStarted();
+
+        // Buka kunci semua APARPin
+        var aparPins = FindObjectsByType<APARPin>(FindObjectsSortMode.None);
+        foreach (var ap in aparPins)
+            ap.SetMissionStarted();
+
+        // Aktifkan grab body APAR (AutoFireExtinguisher)
+        var extinguishers = FindObjectsByType<AutoFireExtinguisher>(FindObjectsSortMode.None);
+        foreach (var ext in extinguishers)
+            ext.SetMissionStarted();
+
+        // Tampilkan panduan animasi APAR (APARPinGuideAnimation)
+        var pinGuides = FindObjectsByType<APARPinGuideAnimation>(FindObjectsSortMode.None);
+        foreach (var pg in pinGuides)
+            pg.SetMissionStarted();
+
+        Debug.Log($"[VRUIManager] ✅ APAR Unlocked: {propStateMachines.Length} StateMachine, " +
+                  $"{pinIndicators.Length} PinIndicator, {hoseGrabbers.Length} HoseGrabber, " +
+                  $"{aparPins.Length} APARPin, {extinguishers.Length} Extinguisher, {pinGuides.Length} PinGuide");
     }
 
     /// <summary>
@@ -454,6 +522,9 @@ private IEnumerator EmergencyCall113Routine()
 
         var alarmSystem = FindFirstObjectByType<FireAlarmSystem>();
         if (alarmSystem != null) alarmSystem.StartAlarm();
+
+        // Buka kunci semua interaksi APAR sekarang misi aktif
+        UnlockAllAPAR();
 
         Debug.Log("[VRUIManager] Misi Pemadaman APAR Dimulai!");
     }

@@ -26,6 +26,10 @@ public class APARPin : MonoBehaviour
     private Vector3 initialLocalPosition;
     private Transform initialParent;
 
+    // ── Mission Lock ─────────────────────────────────────────────────────────
+    // Pin tidak bisa di-grab sampai misi resmi dimulai
+    private bool isMissionStarted = false;
+
     private void Awake()
     {
         pinGrabInteractable = GetComponent<XRGrabInteractable>();
@@ -57,6 +61,13 @@ public class APARPin : MonoBehaviour
 
     private void OnPinGrabbed(SelectEnterEventArgs args)
     {
+        // Blokir grab sebelum misi dimulai
+        if (!isMissionStarted)
+        {
+            Debug.Log("[APARPin] 🔒 Grab pin diblokir — misi belum dimulai!");
+            return;
+        }
+
         if (isPinPulled) return; // Pin sudah tercabut, abaikan
 
         Debug.Log("[APARPin] Pin di-grab!");
@@ -70,6 +81,9 @@ public class APARPin : MonoBehaviour
 
     private void OnPinReleased(SelectExitEventArgs args)
     {
+        // Kalau misi belum dimulai, tidak ada yang perlu dilakukan
+        if (!isMissionStarted) return;
+
         if (isPinPulled) return; // Sudah tercabut, tidak perlu cek lagi
 
         // Cek jarak dari posisi awal jika tidak pakai pullOnFirstGrab
@@ -91,6 +105,16 @@ public class APARPin : MonoBehaviour
                 Debug.Log("[APARPin] Pin belum cukup ditarik, dikembalikan ke posisi awal.");
             }
         }
+    }
+
+    /// <summary>
+    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
+    /// Setelah dipanggil, pin bisa di-grab dan dicabut.
+    /// </summary>
+    public void SetMissionStarted()
+    {
+        isMissionStarted = true;
+        Debug.Log("[APARPin] ✅ Misi dimulai — grab pin sekarang aktif!");
     }
 
     private void PullPin()

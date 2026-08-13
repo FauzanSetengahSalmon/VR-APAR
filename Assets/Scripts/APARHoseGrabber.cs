@@ -40,6 +40,10 @@ public class APARHoseGrabber : MonoBehaviour
     private Quaternion nozzleRestLocalRot;
     private const int HOSE_SEGMENTS = 20;
 
+    // ── Mission Lock ─────────────────────────────────────────────────────────
+    // Selang tidak bisa di-grab sampai misi resmi dimulai
+    private bool isMissionStarted = false;
+
     private void Awake()
     {
         // Setup interactable
@@ -128,6 +132,13 @@ public class APARHoseGrabber : MonoBehaviour
 
     private void OnHoseGrabbed(SelectEnterEventArgs args)
     {
+        // Blokir grab sebelum misi dimulai
+        if (!isMissionStarted)
+        {
+            Debug.Log("[APARHoseGrabber] 🔒 Grab selang diblokir — misi belum dimulai!");
+            return;
+        }
+
         Debug.Log("[APARHoseGrabber] 🖐️ Selang APAR digenggam Tangan Kiri!");
         isHoseGrabbed = true;
 
@@ -152,6 +163,9 @@ public class APARHoseGrabber : MonoBehaviour
 
     private void OnHoseReleased(SelectExitEventArgs args)
     {
+        // Jika misi belum dimulai, tidak ada yang perlu direset
+        if (!isMissionStarted) return;
+
         Debug.Log("[APARHoseGrabber] 🖐️ Selang APAR dilepas.");
         isHoseGrabbed = false;
 
@@ -173,6 +187,16 @@ public class APARHoseGrabber : MonoBehaviour
         {
             hoseLineRenderer.enabled = false;
         }
+    }
+
+    /// <summary>
+    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
+    /// Setelah dipanggil, selang bisa di-grab.
+    /// </summary>
+    public void SetMissionStarted()
+    {
+        isMissionStarted = true;
+        Debug.Log("[APARHoseGrabber] ✅ Misi dimulai — grab selang sekarang aktif!");
     }
 
     private void Update()
