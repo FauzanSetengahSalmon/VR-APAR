@@ -1,19 +1,21 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 /// <summary>
-/// Script utama APAR (Alat Pemadam Api Ringan) dengan mekanisme realistis:
-/// - Tangan kanan memegang body APAR (handle utama)
-/// - Tangan kanan juga dipakai untuk mencabut pin (via APARPin.cs)
-/// - Tangan kiri memegang hose/moncong (via APARHoseGrabber.cs)
-/// - Spray HANYA nyala jika: PIN sudah dicabut AND tangan kiri sedang grip hose
-/// - Saat grip hose dilepas → spray langsung mati
+/// Script utama APAR (Alat Pemadam Api Ringan) VR:
+/// - Tangan KIRI memegang Body/Tabung APAR (posisi ter-offset pas, tidak menutupi kamera)
+/// - Tangan KANAN otomatis memegang Corong saat APAR di-grab
+/// - Tombol X atau Y pada VR Controller (atau tombol X/Y di keyboard) untuk cabut PIN
+/// - Setelah PIN dicabut, menekan TRIGGER controller akan membuka gagang & mengeluarkan ASAP dari Corong
+/// - Asap & raycast pemadaman selalu mengikuti rotasi & posisi Corong (tangan kanan)
 /// </summary>
 public class AutoFireExtinguisher : MonoBehaviour
 {
     [Header("Referensi Spray & Audio")]
+    [Tooltip("ParticleSystem asap (Smoke) pada Corong — diisi otomatis jika kosong")]
     public ParticleSystem sprayEffect;
     public AudioClip sprayAudioClip;
     [Range(0f, 1f)] public float sprayVolume = 0.9f;
@@ -23,41 +25,49 @@ public class AutoFireExtinguisher : MonoBehaviour
     public float extinguishRange = 4f;
 
     [Header("Mekanisme Pin APAR")]
-    [Tooltip("Apakah pin sudah dicabut? Diatur otomatis oleh script APARPin saat pin di-grab.")]
+    [Tooltip("Apakah pin sudah dicabut? Bisa dicabut via tombol X/Y VR Controller atau grab Pin.")]
     public bool pinPulled = false;
 
-    [Header("Offset Pegangan Tangan")]
-    [Tooltip("Geser posisi APAR relatif terhadap tangan kanan")]
-    public Vector3 handOffsetPosition = Vector3.zero;
-    [Tooltip("Putar rotasi APAR relatif terhadap tangan kanan")]
-    public Vector3 handOffsetRotation = Vector3.zero;
+    [Header("Offset Pegangan Tangan Kiri (Tabung)")]
+    [Tooltip("Geser posisi tabung APAR relatif terhadap tangan kiri (mencegah menutupi layar VR)")]
+    public Vector3 handOffsetPosition = new Vector3(-0.1f, -0.45f, 0.25f);
+    [Tooltip("Putar rotasi tabung APAR relatif terhadap tangan kiri")]
+    public Vector3 handOffsetRotation = new Vector3(15f, -15f, 0f);
+
+    [Header("Referensi Mesh 3D Selang Statis")]
+    [Tooltip("GameObject Mesh 3D Selang bawaan model 3D (akan dinonaktifkan otomatis saat APAR diambil)")]
+    public GameObject staticMeshSelang;
 
     [Header("Testing / Debug")]
-    [Tooltip("Tekan Space/G di keyboard untuk toggle spray saat testing di Editor")]
+    [Tooltip("Tekan Space di keyboard untuk toggle spray saat testing di Editor")]
     public bool debugForceSpray = false;
 
     // ── Referensi internal ──────────────────────────────────────────────────
     private XRGrabInteractable grabInteractable;
     private AudioSource audioSource;
     private bool isAttachedToHand = false;
-    private bool isTestingActive = false;
 
     // ── Status genggaman (di-set dari luar oleh APARHoseGrabber) ───────────
     [HideInInspector] public bool isMainHandleHeld = false;
     [HideInInspector] public bool isHoseHeld = false;
 
+    // ── Referensi Corong (nozzle) — diisi oleh APARHoseGrabber ─────────────
+    [HideInInspector] public Transform nozzleTransform;
+
     // ── State spray internal ────────────────────────────────────────────────
     private bool wasSprayingLastFrame = false;
 
     // ── Mission Lock ─────────────────────────────────────────────────────────
-    // Grab body APAR dikunci sampai misi dimulai
     private bool isMissionStarted = false;
+
+    // ── State Input Controller VR ───────────────────────────────────────────
+    private bool isTriggerPressedOnController = false;
+
+    private APARPropStateMachine propStateMachine;
 
     // ═══════════════════════════════════════════════════════════════════════
     //  UNITY LIFECYCLE
     // ═══════════════════════════════════════════════════════════════════════
-
-    private APARPropStateMachine propStateMachine;
 
     private void Awake()
     {
@@ -65,7 +75,7 @@ public class AutoFireExtinguisher : MonoBehaviour
         propStateMachine = GetComponent<APARPropStateMachine>();
         if (propStateMachine == null) propStateMachine = GetComponentInParent<APARPropStateMachine>();
 
-        // Kunci fisika agar APAR tidak jatuh saat game dimulai
+        // Kunci fisika agar tabung tidak jatuh saat game dimulai
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -82,9 +92,55 @@ public class AutoFireExtinguisher : MonoBehaviour
         audioSource.spatialBlend = 1f;
         audioSource.volume = sprayVolume;
 
-        // Setup particle spray — pastikan mati di awal
+        // Setup particle spray — cari "Smoke" atau "ExtinguisherSmoke" di seluruh hierarchy
+        SetupParticleSpray();
+
+        // ⚠️ PAKSA RESET
+        pinPulled = false;
+        debugForceSpray = false;
+        wasSprayingLastFrame = false;
+        isAttachedToHand = false;
+        isMainHandleHeld = false;
+        isHoseHeld = false;
+
+        // Kunci grab APAR sampai misi dimulai
+        if (grabInteractable != null)
+            grabInteractable.enabled = false;
+
+        Debug.Log("[APAR] Initialized. Tekan X/Y untuk cabut pin.");
+    }
+
+    private void SetupParticleSpray()
+    {
+        if (staticMeshSelang == null)
+        {
+            Transform s = transform.Find("Selang");
+            if (s != null) staticMeshSelang = s.gameObject;
+        }
+
+        // Matikan mesh 3D Selang statis sejak awal agar tidak ada selang ganda di scene
+        if (staticMeshSelang != null && staticMeshSelang.activeSelf)
+        {
+            staticMeshSelang.SetActive(false);
+            Debug.Log("[APAR] 🙈 Mesh 3D 'Selang' statis dinonaktifkan di awal.");
+        }
+
         if (sprayEffect == null)
-            sprayEffect = GetComponentInChildren<ParticleSystem>();
+        {
+            ParticleSystem[] psList = GetComponentsInChildren<ParticleSystem>(true);
+            foreach (var ps in psList)
+            {
+                string n = ps.gameObject.name;
+                if (n.Equals("Smoke", System.StringComparison.OrdinalIgnoreCase) ||
+                    n.Equals("ExtinguisherSmoke", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    sprayEffect = ps;
+                    break;
+                }
+            }
+            if (sprayEffect == null && psList.Length > 0)
+                sprayEffect = psList[0];
+        }
 
         if (sprayEffect != null)
         {
@@ -92,22 +148,9 @@ public class AutoFireExtinguisher : MonoBehaviour
             main.playOnAwake = false;
             if (sprayEffect.isPlaying)
                 sprayEffect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            nozzleTransform = sprayEffect.transform;
         }
-
-        // ⚠️ PAKSA RESET — override nilai Inspector lama yang mungkin masih true
-        pinPulled          = false;
-        debugForceSpray    = false;
-        isTestingActive    = false;
-        wasSprayingLastFrame = false;
-        isAttachedToHand   = false;
-        isMainHandleHeld   = false;
-        isHoseHeld         = false;
-
-        // Kunci grab APAR sampai misi dimulai
-        if (grabInteractable != null)
-            grabInteractable.enabled = false;
-
-        Debug.Log("[APAR] State direset. Cabut pin dulu sebelum bisa spray.");
     }
 
     private void OnEnable()
@@ -132,82 +175,159 @@ public class AutoFireExtinguisher : MonoBehaviour
 
     private void Update()
     {
-        // Update status genggaman handle utama (hanya jika belum attached ke tangan)
-        if (grabInteractable != null && !isAttachedToHand)
-        {
-            isMainHandleHeld = grabInteractable.isSelected || grabInteractable.interactorsSelecting.Count > 0;
-        }
+        // ── 1. Cek Input Tombol X dan Y (Cabut PIN) ────────────────────────
+        CheckPinPullInput();
 
-        // ── Testing Keyboard di Editor ─────────────────────────────────────
-        bool keyboardLeverPressed = false;
-        if (Keyboard.current != null)
-        {
-            // Tekan 'P' di keyboard untuk cabut/pasang pin
-            if (Keyboard.current.pKey.wasPressedThisFrame)
-            {
-                pinPulled = !pinPulled;
-                Debug.Log($"[APAR] 🔑 Pin State (via 'P'): {(pinPulled ? "DICABUT (UNLOCKED)" : "TERPASANG (LOCKED)")}");
-                if (propStateMachine != null)
-                {
-                    if (pinPulled) propStateMachine.PullPin();
-                    else propStateMachine.LockPin();
-                }
-            }
+        // ── 2. Cek Input Trigger / Gagang ─────────────────────────────────
+        CheckTriggerInput();
 
-            // Tahan 'Space' di keyboard untuk tekan gagang
-            keyboardLeverPressed = Keyboard.current.spaceKey.isPressed;
-        }
+        // ── 3. Evaluasi Kondisi Spray ──────────────────────────────────────
+        bool isPropSpraying  = (propStateMachine != null && propStateMachine.IsSpraying);
+        bool isKeyboardSpray = pinPulled && (Keyboard.current != null && Keyboard.current.spaceKey.isPressed);
+        bool isVRSpraying    = pinPulled && (isHoseHeld || isMainHandleHeld) && isTriggerPressedOnController;
+        bool isAnySpraying   = pinPulled && (isVRSpraying || isPropSpraying || isKeyboardSpray);
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // KONDISI SPRAY — Wajib Mengikuti State Machine & Pin
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        bool isPropSpraying = (propStateMachine != null && propStateMachine.IsSpraying);
-        bool isKeyboardSpraying = pinPulled && keyboardLeverPressed;
-        bool isStandardVRSpraying = pinPulled && isHoseHeld;
-        bool shouldSpray = isPropSpraying || isKeyboardSpraying || isStandardVRSpraying || debugForceSpray;
+        bool shouldSpray     = isAnySpraying || debugForceSpray;
 
-        // Nyalakan/matikan spray hanya saat ada perubahan state (efisien)
-        if (shouldSpray && !wasSprayingLastFrame)
-        {
-            StartSpray();
-        }
-        else if (!shouldSpray && wasSprayingLastFrame)
-        {
-            StopSpray();
-        }
+        if (shouldSpray && !wasSprayingLastFrame)      StartSpray();
+        else if (!shouldSpray && wasSprayingLastFrame) StopSpray();
 
         wasSprayingLastFrame = shouldSpray;
 
-        // Lakukan penghitungan pemadam jika spray aktif
-        if (shouldSpray)
-        {
-            ExtinguishFiresGradually();
-        }
-    }
-
-    /// <summary>
-    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
-    /// Setelah dipanggil, body APAR bisa di-grab.
-    /// </summary>
-    public void SetMissionStarted()
-    {
-        isMissionStarted = true;
-        // Aktifkan kembali XRGrabInteractable agar APAR bisa dipegang
-        if (grabInteractable != null)
-            grabInteractable.enabled = true;
-        Debug.Log("[APAR] ✅ Misi dimulai — grab body APAR sekarang aktif!");
+        if (shouldSpray) ExtinguishFiresGradually();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  GRAB EVENTS — hanya mengurus attachment APAR ke tangan, BUKAN spray
+    //  INPUT HANDLERS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Memeriksa tombol X atau Y pada VR Controller (atau key X/Y di keyboard) untuk cabut PIN.
+    /// </summary>
+    private void CheckPinPullInput()
+    {
+        if (pinPulled) return;
+        if (!isMissionStarted && !isAttachedToHand) return;
+
+        bool pullTriggered = false;
+        string source = "";
+
+        // A. Keyboard (X / Y key)
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.xKey.wasPressedThisFrame || Keyboard.current.yKey.wasPressedThisFrame || Keyboard.current.pKey.wasPressedThisFrame)
+            {
+                pullTriggered = true;
+                source = "Keyboard (X/Y/P)";
+            }
+        }
+
+        // B. VR Controller Primary/Secondary Button (X/Y di Left Controller, A/B di Right Controller)
+        if (!pullTriggered)
+        {
+            var leftHand = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+            if (leftHand.isValid)
+            {
+                if ((leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.primaryButton, out bool xBtn) && xBtn) ||
+                    (leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.secondaryButton, out bool yBtn) && yBtn))
+                {
+                    pullTriggered = true;
+                    source = "Left Controller (Tombol X/Y)";
+                }
+            }
+
+            var rightHand = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+            if (!pullTriggered && rightHand.isValid)
+            {
+                if ((rightHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.primaryButton, out bool aBtn) && aBtn) ||
+                    (rightHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.secondaryButton, out bool bBtn) && bBtn))
+                {
+                    pullTriggered = true;
+                    source = "Right Controller (Tombol A/B)";
+                }
+            }
+        }
+
+        if (pullTriggered)
+        {
+            PullPinFromInput(source);
+        }
+    }
+
+    public void PullPinFromInput(string inputSource = "VR Controller")
+    {
+        if (pinPulled) return;
+
+        pinPulled = true;
+        Debug.Log($"[APAR] 🔑 PIN DICABUT via {inputSource}! APAR siap digunakan.");
+
+        // Cari script APARPin dan triggernya
+        APARPin aparPin = GetComponentInChildren<APARPin>();
+        if (aparPin != null)
+        {
+            // Panggil melepaskan pin visual
+            var pinTransform = aparPin.transform;
+            if (pinTransform != null && pinTransform.parent != null)
+                pinTransform.SetParent(null);
+        }
+
+        if (propStateMachine != null)
+            propStateMachine.PullPin();
+    }
+
+    /// <summary>
+    /// Memeriksa status penekanan Trigger pada controller.
+    /// </summary>
+    private void CheckTriggerInput()
+    {
+        isTriggerPressedOnController = false;
+
+        // Cek trigger dari Left & Right Controller
+        var leftHand = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+        if (leftHand.isValid)
+        {
+            if (leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float leftTrig) && leftTrig > 0.15f)
+            {
+                isTriggerPressedOnController = true;
+                return;
+            }
+        }
+
+        var rightHand = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+        if (rightHand.isValid)
+        {
+            if (rightHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float rightTrig) && rightTrig > 0.15f)
+            {
+                isTriggerPressedOnController = true;
+                return;
+            }
+        }
+
+        // Fallback editor / keyboard space
+        if (Keyboard.current != null && Keyboard.current.spaceKey.isPressed)
+        {
+            isTriggerPressedOnController = true;
+        }
+    }
+
+    /// <summary>Panggil saat misi resmi dimulai — body tabung bisa di-grab.</summary>
+    public void SetMissionStarted()
+    {
+        isMissionStarted = true;
+        if (grabInteractable != null)
+            grabInteractable.enabled = true;
+        Debug.Log("[APAR] ✅ Misi dimulai — grab tabung APAR sekarang aktif!");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  GRAB EVENTS — Tabung APAR → Tangan KIRI
     // ═══════════════════════════════════════════════════════════════════════
 
     private void OnGrabEnter(SelectEnterEventArgs args)
     {
-        // Blokir grab sebelum misi dimulai
         if (!isMissionStarted)
         {
-            Debug.Log("[APAR] 🔒 Grab body APAR diblokir — misi belum dimulai!");
+            Debug.Log("[APAR] 🔒 Grab tabung diblokir — misi belum dimulai!");
             return;
         }
 
@@ -219,17 +339,16 @@ public class AutoFireExtinguisher : MonoBehaviour
             if (handAnim != null) handAnim.SetForceGrip(true);
         }
 
-        // Kunci APAR sebagai child dari controller tangan kanan (hanya sekali)
+        // Attach tabung APAR ke Tangan KIRI dengan offset yang rapi (tidak menutupi muka)
         if (!isAttachedToHand && args.interactorObject != null)
         {
             isAttachedToHand = true;
 
-            Transform handTransform = args.interactorObject.transform;
-            transform.SetParent(handTransform);
+            Transform leftHandTransform = args.interactorObject.transform;
+            transform.SetParent(leftHandTransform);
             transform.localPosition = handOffsetPosition;
             transform.localRotation = Quaternion.Euler(handOffsetRotation);
 
-            // Matikan fisika agar tidak goyang
             Rigidbody rb = GetComponent<Rigidbody>();
             if (rb != null)
             {
@@ -237,19 +356,29 @@ public class AutoFireExtinguisher : MonoBehaviour
                 rb.useGravity = false;
             }
 
-            // Nonaktifkan XRGrabInteractable setelah ter-attach
             if (grabInteractable != null)
                 grabInteractable.enabled = false;
 
-            Debug.Log("[APAR] APAR ter-attach ke tangan kanan.");
-        }
+            // Nonaktifkan mesh 3D Selang statis bawaan model agar tidak mengganggu selang elastis
+            if (staticMeshSelang != null)
+            {
+                staticMeshSelang.SetActive(false);
+                Debug.Log("[APAR] 🙈 Mesh 3D 'Selang' statis dinonaktifkan!");
+            }
 
-        // ❌ TIDAK ada StartSpray() di sini — spray hanya dari Update()
+            Debug.Log("[APAR] 🤚 Tabung ter-attach ke Tangan KIRI.");
+
+            // 🌟 OTOMATIS AKTIFKAN TANGAN KANAN UNTUK MEMEGANG CORONG
+            APARHoseGrabber hoseGrabber = GetComponentInChildren<APARHoseGrabber>();
+            if (hoseGrabber != null)
+            {
+                hoseGrabber.AutoGrabRightHand();
+            }
+        }
     }
 
     private void OnGrabExit(SelectExitEventArgs args)
     {
-        // Jika sudah menempel di tangan, pertahankan status isMainHandleHeld
         if (isAttachedToHand)
         {
             isMainHandleHeld = true;
@@ -257,16 +386,17 @@ public class AutoFireExtinguisher : MonoBehaviour
         }
 
         isMainHandleHeld = false;
-        // ❌ TIDAK ada StopSpray() di sini — spray hanya dikontrol dari Update()
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  EKSTINGSI API
+    //  EKSTINGSI API — raycast dari moncong Corong (Smoke)
     // ═══════════════════════════════════════════════════════════════════════
 
     private void ExtinguishFiresGradually()
     {
-        Transform nozzle = sprayEffect != null ? sprayEffect.transform : transform;
+        Transform nozzle = nozzleTransform != null ? nozzleTransform :
+                           (sprayEffect != null ? sprayEffect.transform : transform);
+
         Debug.DrawRay(nozzle.position, nozzle.forward * extinguishRange, Color.cyan);
 
         RaycastHit[] hits = Physics.SphereCastAll(nozzle.position, 0.4f, nozzle.forward, extinguishRange);
@@ -274,9 +404,7 @@ public class AutoFireExtinguisher : MonoBehaviour
         {
             FireExtinguisherTarget target = hit.collider.GetComponentInParent<FireExtinguisherTarget>();
             if (target != null)
-            {
                 target.ExtinguishGradually(Time.deltaTime);
-            }
         }
     }
 
@@ -297,7 +425,7 @@ public class AutoFireExtinguisher : MonoBehaviour
         if (audioSource != null && sprayAudioClip != null && !audioSource.isPlaying)
             audioSource.Play();
 
-        Debug.Log("[APAR] ✅ Spray NYALA — pin dicabut & hose digenggam.");
+        Debug.Log("[APAR] ✅ Spray NYALA — Asap menyemprot dari Corong.");
     }
 
     public void StopSpray()

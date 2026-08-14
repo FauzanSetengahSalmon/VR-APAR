@@ -11,14 +11,6 @@ using XRInputDevices = UnityEngine.XR.InputDevices;
 using XRCommonUsages = UnityEngine.XR.CommonUsages;
 using XRDeviceNode = UnityEngine.XR.XRNode;
 
-/// <summary>
-/// State Machine Interaksi APAR VR untuk Custom Physical Prop Controller.
-/// 
-/// ALUR INTERAKSI:
-///   1. State 1 [SafetyPinLocked] : Pin pengaman fisik terpasang di prop. Software terkunci.
-///   2. State 2 [PinPulled_Ready] : Pin ditarik/dicabut. Kunci terbuka, spray BELUM aktif.
-///   3. State 3 [SprayActive]     : Gagang fisik APAR ditekan SETELAH pin dicabut. Spray MENYEMPROT!
-/// </summary>
 public class APARPropStateMachine : MonoBehaviour
 {
     // ═══════════════════════════════════════════════════════════════════════
@@ -55,7 +47,7 @@ public class APARPropStateMachine : MonoBehaviour
 
     [Header("Pengaturan Input Controller")]
     [Tooltip("Tangan controller tempat prop APAR terpasang (Default: RightHand)")]
-    public ControllerHand controllerHand = ControllerHand.RightHand;
+    public ControllerHand controllerHand = ControllerHand.RightHand; // Default ke Tangan Kanan untuk Tabung APAR
 
     [Tooltip("Tombol fisik controller yang ditekan oleh gagang APAR (Default: Trigger / RT)")]
     public PhysicalInputSource leverInputButton = PhysicalInputSource.Trigger;

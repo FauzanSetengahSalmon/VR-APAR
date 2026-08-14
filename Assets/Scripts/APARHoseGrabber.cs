@@ -1,115 +1,255 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 /// <summary>
-/// Script Kontrol Selang APAR Fleksibel (Meta Quest 3).
+/// Script Kontrol Corong APAR (Meta Quest 3 / XR Simulator).
 /// 
-/// FUNGSI:
-///   1. Rapi & Clean (Tanpa Double Hose):
-///      - Saat selang TIDAK digenggam: LineRenderer DINONAKTIFKAN agar model 3D APAR terlihat rapi dan alami.
-///      - Saat selang DIGENGGAM Tangan Kiri: LineRenderer OTOMATIS AKTIF, membentang melengkung dari bodi ke tangan kiri.
-///   2. Anti-Jitter / Anti-Kejut: Movement 100% smooth tanpa bentrokan fisika.
-///   3. Semprotan Smoke Presisi: Mengikuti moncong selang di tangan kiri.
+/// TUGAS:
+///   - Corong (Cylinder.008 / "Corong") dipegang TANGAN KANAN
+///   - Otomatis menempel ke Tangan Kanan saat APAR di-grab oleh Tangan Kiri
+///   - Smoke (ParticleSystem anak dari Corong) otomatis mengikuti arah corong
+///   - Selang elastis (LineRenderer) menghubungkan leher tabung ke belakang corong
+///   - Selang SELALU tampil, lentur melengkung alami layaknya selang karet APAR asli
 /// </summary>
 public class APARHoseGrabber : MonoBehaviour
 {
     [Header("Referensi Utama")]
-    [Tooltip("Script AutoFireExtinguisher utama")]
+    [Tooltip("Script AutoFireExtinguisher pada root APAR Full")]
     public AutoFireExtinguisher mainExtinguisher;
 
-    [Tooltip("Transform pangkal keluar selang dari bodi APAR (misal: HoseOrigin)")]
+    [Tooltip("Transform pangkal selang di bodi tabung. Diisi otomatis jika kosong.")]
     public Transform hoseBodyOutlet;
 
     [Header("Pengaturan Selang Visual")]
-    [Tooltip("Ketebalan selang karet hitam")]
-    public float hoseThickness = 0.028f;
+    [Tooltip("Ketebalan selang karet")]
+    public float hoseThickness = 0.025f;
 
-    [Tooltip("Kelenturan lengkungan selang ke bawah saat ditarik")]
-    public float hoseSagAmount = 0.15f;
+    [Tooltip("Kelenturan gravitasi selang (sag). Makin besar makin melengkung ke bawah.")]
+    public float hoseSagAmount = 0.22f;
 
-    [Tooltip("Kecepatan kehalusan ikuti tangan kiri")]
-    public float followSmoothSpeed = 30f;
+    [Tooltip("Kecepatan corong mengikuti tangan kanan (smooth lerp)")]
+    public float followSmoothSpeed = 25f;
 
-    // ── Private Internal State ──────────────────────────────────────────────
+    [Tooltip("Offset posisi lokal corong saat digenggam tangan kanan")]
+    public Vector3 nozzleHoldOffset = new Vector3(0.02f, -0.05f, 0.15f);
+    [Tooltip("Offset rotasi lokal corong saat digenggam tangan kanan (putar 180 jika kebalik)")]
+    public Vector3 nozzleHoldRotOffset = new Vector3(0f, 180f, 0f);
+
+    [Tooltip("Offset lokal titik sambungan selang di belakang corong (pangkal belakang corong)")]
+     public Vector3 hoseNozzleConnectOffset = new Vector3(0f, 0f, 0.030f);
+
+    // ── Private State ───────────────────────────────────────────────────────
     private XRGrabInteractable hoseGrabInteractable;
-    private Transform leftHandTransform;
+    private Transform rightHandTransform;   // Tangan KANAN memegang corong
     private bool isHoseGrabbed = false;
-    private LineRenderer hoseLineRenderer;
+
+    private LineRenderer lr;
     private Vector3 nozzleRestLocalPos;
     private Quaternion nozzleRestLocalRot;
-    private const int HOSE_SEGMENTS = 20;
+
+    private const int HOSE_SEGMENTS = 28;   // Lebih banyak → lebih mulus
+    private Transform smokeTransform;        // Cache Smoke child
 
     // ── Mission Lock ─────────────────────────────────────────────────────────
-    // Selang tidak bisa di-grab sampai misi resmi dimulai
     private bool isMissionStarted = false;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  AWAKE / START
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void Awake()
     {
-        // Setup interactable
+        // --- Setup XRGrabInteractable ----------------------------------------
         hoseGrabInteractable = GetComponent<XRGrabInteractable>();
         if (hoseGrabInteractable == null)
             hoseGrabInteractable = gameObject.AddComponent<XRGrabInteractable>();
 
-        hoseGrabInteractable.movementType = XRBaseInteractable.MovementType.Instantaneous;
-        hoseGrabInteractable.trackPosition = false; // Kita kelola posisi di Update agar 100% halus tanpa kejut
-        hoseGrabInteractable.trackRotation = false;
+        hoseGrabInteractable.movementType      = XRBaseInteractable.MovementType.Instantaneous;
+        hoseGrabInteractable.trackPosition     = false;
+        hoseGrabInteractable.trackRotation     = false;
 
-        // Pastikan fisika tidak bentrok
+        // --- Rigidbody kinematic ─────────────────────────────────────────────
         Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-            rb.useGravity = false;
-        }
+        if (rb != null) { rb.isKinematic = true; rb.useGravity = false; }
 
         Collider col = GetComponent<Collider>();
-        if (col != null)
-        {
-            col.isTrigger = true;
-        }
+        if (col != null) col.isTrigger = true;
 
         if (mainExtinguisher == null)
             mainExtinguisher = GetComponentInParent<AutoFireExtinguisher>();
 
-        // Simpan posisi & rotasi resting awal
         nozzleRestLocalPos = transform.localPosition;
         nozzleRestLocalRot = transform.localRotation;
 
-        AutoFindHoseOutlet();
+        FindHoseOutlet();
         SetupHoseLineRenderer();
     }
 
-    private void AutoFindHoseOutlet()
+    private void Start()
     {
-        if (hoseBodyOutlet == null && transform.parent != null)
+        SetupSmokeReference();
+
+        if (mainExtinguisher != null)
+            mainExtinguisher.nozzleTransform = smokeTransform != null ? smokeTransform : transform;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  AUTO-ATTACH RIGHT HAND
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Dipanggil otomatis saat Tabung APAR di-grab Tangan Kiri.
+    /// Mencari Tangan Kanan di scene dan langsung meng-attach Corong ke Tangan Kanan.
+    /// </summary>
+    public void AutoGrabRightHand()
+    {
+        if (rightHandTransform != null && isHoseGrabbed) return;
+
+        Transform foundRightHand = FindRightHandTransform();
+        if (foundRightHand != null)
         {
-            hoseBodyOutlet = transform.parent.Find("HoseOrigin");
-            if (hoseBodyOutlet == null) hoseBodyOutlet = transform.parent.Find("mid_tube_p1_low");
-            if (hoseBodyOutlet == null) hoseBodyOutlet = transform.parent.Find("fire_tube_low");
+            rightHandTransform = foundRightHand;
+            isHoseGrabbed = true;
+
+            if (mainExtinguisher != null)
+                mainExtinguisher.isHoseHeld = true;
+
+            VRHandAnimator handAnim = foundRightHand.GetComponentInParent<VRHandAnimator>();
+            if (handAnim != null) handAnim.SetForceGrip(true);
+
+            // Sembunyikan mesh 3D Selang statis agar tidak mengganggu selang elastis
+            if (mainExtinguisher != null && mainExtinguisher.staticMeshSelang != null)
+            {
+                mainExtinguisher.staticMeshSelang.SetActive(false);
+            }
+            else if (transform.parent != null)
+            {
+                Transform s = transform.parent.Find("Selang");
+                if (s != null) s.gameObject.SetActive(false);
+            }
+
+            Debug.Log($"[APARHoseGrabber] 🤝 Corong OTOMATIS ter-attach ke Tangan Kanan ('{foundRightHand.name}')!");
+        }
+        else
+        {
+            Debug.LogWarning("[APARHoseGrabber] ⚠️ Tangan Kanan belum ditemukan di scene. Corong dapat di-grab secara manual.");
+        }
+    }
+
+    private Transform FindRightHandTransform()
+    {
+        // 1. Cari berdasarkan GameObject name
+        string[] searchNames = {
+            "RightHand Controller", "Right Controller", "RightHandDirectInteractor",
+            "RightHand", "Right Interaction Follower", "RightHand Index-Tip"
+        };
+
+        foreach (string n in searchNames)
+        {
+            GameObject go = GameObject.Find(n);
+            if (go != null) return go.transform;
+        }
+
+        // 2. Cari berdasarkan XRBaseInteractor dengan tag/nama 'Right'
+        var interactors = FindObjectsByType<XRBaseInteractor>(FindObjectsSortMode.None);
+        foreach (var interactor in interactors)
+        {
+            string name = interactor.gameObject.name.ToLower();
+            if (name.Contains("right") && !name.Contains("ui"))
+            {
+                return interactor.transform;
+            }
+        }
+
+        return null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  SETUP HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private void FindHoseOutlet()
+    {
+        if (hoseBodyOutlet != null) return;
+        if (transform.parent == null) return;
+
+        Transform root = transform.parent;
+        string[] outletNames = { "HoseOrigin", "SelangOrigin", "HoseStart", "mid_tube_p1_low", "fire_tube_low" };
+        foreach (string n in outletNames)
+        {
+            hoseBodyOutlet = root.Find(n);
+            if (hoseBodyOutlet != null) break;
+        }
+
+        if (hoseBodyOutlet == null)
+        {
+            Transform tabung = root.Find("Tabung");
+            if (tabung == null) tabung = root.Find("Selang");
+            if (tabung != null) hoseBodyOutlet = tabung;
+        }
+
+        if (hoseBodyOutlet == null) hoseBodyOutlet = root;
+
+        Debug.Log($"[APARHoseGrabber] 🔗 HoseOutlet ditemukan: '{hoseBodyOutlet?.name}'");
+    }
+
+    private void SetupSmokeReference()
+    {
+        ParticleSystem[] list = GetComponentsInChildren<ParticleSystem>(true);
+        foreach (var ps in list)
+        {
+            string n = ps.gameObject.name;
+            if (n.Equals("Smoke", System.StringComparison.OrdinalIgnoreCase) ||
+                n.Equals("ExtinguisherSmoke", System.StringComparison.OrdinalIgnoreCase))
+            {
+                smokeTransform = ps.transform;
+
+                if (mainExtinguisher != null && mainExtinguisher.sprayEffect == null)
+                    mainExtinguisher.sprayEffect = ps;
+
+                Debug.Log($"[APARHoseGrabber] 💨 Smoke '{ps.gameObject.name}' ditemukan di Corong.");
+                return;
+            }
+        }
+
+        if (list.Length > 0)
+        {
+            smokeTransform = list[0].transform;
+            if (mainExtinguisher != null && mainExtinguisher.sprayEffect == null)
+                mainExtinguisher.sprayEffect = list[0];
+        }
+
+        if (smokeTransform == null && mainExtinguisher != null && mainExtinguisher.sprayEffect != null)
+        {
+            smokeTransform = mainExtinguisher.sprayEffect.transform;
         }
     }
 
     private void SetupHoseLineRenderer()
     {
-        hoseLineRenderer = GetComponent<LineRenderer>();
-        if (hoseLineRenderer == null)
-            hoseLineRenderer = gameObject.AddComponent<LineRenderer>();
+        lr = GetComponent<LineRenderer>();
+        if (lr == null) lr = gameObject.AddComponent<LineRenderer>();
 
-        hoseLineRenderer.positionCount = HOSE_SEGMENTS;
-        hoseLineRenderer.startWidth = hoseThickness;
-        hoseLineRenderer.endWidth = hoseThickness * 0.85f;
-        hoseLineRenderer.useWorldSpace = true;
-        hoseLineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        hoseLineRenderer.receiveShadows = false;
+        lr.positionCount  = HOSE_SEGMENTS;
+        lr.startWidth     = hoseThickness;
+        lr.endWidth       = hoseThickness * 0.80f;
+        lr.useWorldSpace  = true;
+        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        lr.receiveShadows = false;
+        lr.numCapVertices = 4;
 
         Material hoseMat = new Material(Shader.Find("Sprites/Default"));
-        hoseMat.color = new Color(0.12f, 0.12f, 0.14f, 1f); // Hitam karet doff
-        hoseLineRenderer.material = hoseMat;
+        hoseMat.color = new Color(0.10f, 0.10f, 0.12f, 1f);
+        lr.material = hoseMat;
 
-        // Mati di awal agar tidak tumpang tindih dengan mesh bawaan 3D model APAR
-        hoseLineRenderer.enabled = false;
+        lr.enabled = true;
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  ENABLE / DISABLE / GRAB
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void OnEnable()
     {
@@ -118,6 +258,7 @@ public class APARHoseGrabber : MonoBehaviour
             hoseGrabInteractable.selectEntered.AddListener(OnHoseGrabbed);
             hoseGrabInteractable.selectExited.AddListener(OnHoseReleased);
         }
+        if (lr != null) lr.enabled = true;
     }
 
     private void OnDisable()
@@ -127,131 +268,127 @@ public class APARHoseGrabber : MonoBehaviour
             hoseGrabInteractable.selectEntered.RemoveListener(OnHoseGrabbed);
             hoseGrabInteractable.selectExited.RemoveListener(OnHoseReleased);
         }
-        if (hoseLineRenderer != null) hoseLineRenderer.enabled = false;
+        if (lr != null) lr.enabled = false;
     }
 
     private void OnHoseGrabbed(SelectEnterEventArgs args)
     {
-        // Blokir grab sebelum misi dimulai
-        if (!isMissionStarted)
-        {
-            Debug.Log("[APARHoseGrabber] 🔒 Grab selang diblokir — misi belum dimulai!");
-            return;
-        }
+        if (!isMissionStarted) return;
 
-        Debug.Log("[APARHoseGrabber] 🖐️ Selang APAR digenggam Tangan Kiri!");
         isHoseGrabbed = true;
-
         if (args.interactorObject != null)
         {
-            leftHandTransform = args.interactorObject.transform;
+            rightHandTransform = args.interactorObject.transform;
+
             VRHandAnimator handAnim = args.interactorObject.transform.GetComponentInParent<VRHandAnimator>();
             if (handAnim != null) handAnim.SetForceGrip(true);
         }
 
         if (mainExtinguisher != null)
-        {
             mainExtinguisher.isHoseHeld = true;
-        }
 
-        // Nyalakan LineRenderer selang lentur saat digenggam
-        if (hoseLineRenderer != null)
-        {
-            hoseLineRenderer.enabled = true;
-        }
+        if (lr != null) lr.enabled = true;
     }
 
     private void OnHoseReleased(SelectExitEventArgs args)
     {
-        // Jika misi belum dimulai, tidak ada yang perlu direset
         if (!isMissionStarted) return;
 
-        Debug.Log("[APARHoseGrabber] 🖐️ Selang APAR dilepas.");
         isHoseGrabbed = false;
-
         if (args.interactorObject != null)
         {
             VRHandAnimator handAnim = args.interactorObject.transform.GetComponentInParent<VRHandAnimator>();
             if (handAnim != null) handAnim.SetForceGrip(false);
         }
 
-        leftHandTransform = null;
+        rightHandTransform = null;
 
         if (mainExtinguisher != null)
-        {
             mainExtinguisher.isHoseHeld = false;
-        }
 
-        // Matikan LineRenderer selang saat dilepas (kembali ke model bawaan APAR)
-        if (hoseLineRenderer != null)
-        {
-            hoseLineRenderer.enabled = false;
-        }
+        if (lr != null) lr.enabled = true;
     }
 
-    /// <summary>
-    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
-    /// Setelah dipanggil, selang bisa di-grab.
-    /// </summary>
     public void SetMissionStarted()
     {
         isMissionStarted = true;
-        Debug.Log("[APARHoseGrabber] ✅ Misi dimulai — grab selang sekarang aktif!");
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  UPDATE
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void Update()
     {
-        // ── 1. GERAKAN MULUS HOSE NOZZLE MENGIKUTI TANGAN KIRI ───────────────
-        if (isHoseGrabbed && leftHandTransform != null)
+        // ── Gerakan Corong mengikuti Tangan Kanan ─────────────────────────
+        if (isHoseGrabbed && rightHandTransform != null)
         {
-            transform.position = Vector3.Lerp(transform.position, leftHandTransform.position, Time.deltaTime * followSmoothSpeed);
-            transform.rotation = Quaternion.Slerp(transform.rotation, leftHandTransform.rotation, Time.deltaTime * followSmoothSpeed);
+            Vector3 targetPos = rightHandTransform.TransformPoint(nozzleHoldOffset);
+            Quaternion targetRot = rightHandTransform.rotation * Quaternion.Euler(nozzleHoldRotOffset);
 
-            // Update kurva selang lentur
-            UpdateVisualHoseCurve();
+            transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * followSmoothSpeed);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.deltaTime * followSmoothSpeed);
         }
         else if (transform.parent != null)
         {
-            // Kembalikan HoseNozzle ke posisi resting di bodi APAR
-            transform.localPosition = Vector3.Lerp(transform.localPosition, nozzleRestLocalPos, Time.deltaTime * 15f);
-            transform.localRotation = Quaternion.Slerp(transform.localRotation, nozzleRestLocalRot, Time.deltaTime * 15f);
-
-            if (hoseLineRenderer != null && hoseLineRenderer.enabled)
-            {
-                hoseLineRenderer.enabled = false;
-            }
+            transform.localPosition = Vector3.Lerp(transform.localPosition, nozzleRestLocalPos, Time.deltaTime * 12f);
+            transform.localRotation = Quaternion.Slerp(transform.localRotation, nozzleRestLocalRot, Time.deltaTime * 12f);
         }
 
-        // ── 2. SYNC STATUS HOLD SAFETY ──────────────────────────────────────
         if (hoseGrabInteractable != null && mainExtinguisher != null)
         {
-            bool currentlySelected = hoseGrabInteractable.isSelected || hoseGrabInteractable.interactorsSelecting.Count > 0;
-            mainExtinguisher.isHoseHeld = currentlySelected || isHoseGrabbed;
+            bool sel = hoseGrabInteractable.isSelected || hoseGrabInteractable.interactorsSelecting.Count > 0;
+            mainExtinguisher.isHoseHeld = sel || isHoseGrabbed;
         }
+
+        DrawElasticHose();
     }
 
-    private void UpdateVisualHoseCurve()
+    // ═══════════════════════════════════════════════════════════════════════
+    //  SELANG ELASTIS — Cubic Bezier dengan tangent realistis
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private void DrawElasticHose()
     {
-        if (hoseLineRenderer == null || !hoseLineRenderer.enabled) return;
+        if (lr == null) return;
+        if (!lr.enabled) lr.enabled = true;
 
-        Vector3 startPos = (hoseBodyOutlet != null) ? hoseBodyOutlet.position : (transform.parent != null ? transform.parent.position : transform.position);
-        Vector3 endPos = transform.position;
+        Vector3 p0 = (hoseBodyOutlet != null)
+            ? hoseBodyOutlet.position
+            : (transform.parent != null ? transform.parent.position : transform.position);
 
-        float dist = Vector3.Distance(startPos, endPos);
-        float dynamicSag = hoseSagAmount * Mathf.Clamp01(dist / 0.8f);
-        Vector3 midPos = (startPos + endPos) * 0.5f + (Vector3.down * dynamicSag);
+        // Titik AKHIR selang: pangkal belakang corong (bukan di tengah pivot corong)
+        Vector3 p3 = transform.TransformPoint(hoseNozzleConnectOffset);
+
+        float dist = Vector3.Distance(p0, p3);
+        Vector3 outDir = (hoseBodyOutlet != null) ? hoseBodyOutlet.up : Vector3.up;
+
+        // Tangent masuk tepat dari pangkal belakang corong
+        Vector3 inDir = hoseNozzleConnectOffset != Vector3.zero
+            ? transform.TransformDirection(hoseNozzleConnectOffset.normalized)
+            : -transform.forward;
+
+        float handle = Mathf.Clamp(dist * 0.55f, 0.08f, 0.70f);
+        float sag = hoseSagAmount * Mathf.Clamp01(dist / 0.6f);
+
+        Vector3 p1 = p0 + outDir * handle + Vector3.down * sag * 0.45f;
+        Vector3 p2 = p3 + inDir  * handle + Vector3.down * sag * 0.65f;
 
         for (int i = 0; i < HOSE_SEGMENTS; i++)
         {
             float t = i / (float)(HOSE_SEGMENTS - 1);
-            Vector3 pointOnCurve = CalculateQuadraticBezierPoint(t, startPos, midPos, endPos);
-            hoseLineRenderer.SetPosition(i, pointOnCurve);
+            lr.SetPosition(i, CubicBezier(t, p0, p1, p2, p3));
         }
     }
 
-    private Vector3 CalculateQuadraticBezierPoint(float t, Vector3 p0, Vector3 p1, Vector3 p2)
+    private static Vector3 CubicBezier(float t, Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3)
     {
-        float u = 1f - t;
-        return (u * u * p0) + (2f * u * t * p1) + (t * t * p2);
+        float u   = 1f - t;
+        float tt  = t * t;
+        float uu  = u * u;
+        return (uu * u) * p0
+             + (3f * uu * t) * p1
+             + (3f * u * tt) * p2
+             + (tt * t)      * p3;
     }
 }
