@@ -212,6 +212,7 @@ public class VRSimulationUIManager : MonoBehaviour
         if (avatarCenterImage != null)
         {
             bool useCustom = iconAvatar != null;
+            avatarCenterImage.gameObject.SetActive(useCustom); // Aktivkan image custom jika ada icon
             avatarCenterImage.sprite = useCustom ? iconAvatar : circleSprite;
             avatarCenterImage.color = useCustom ? Color.white : new Color(0.8f, 0.08f, 0.08f, 0.7f);
             avatarCenterImage.preserveAspect = useCustom;
@@ -640,7 +641,7 @@ private IEnumerator EmergencyCall113Routine()
         mainCanvas.sortingOrder = 50;
 
         CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
-        scaler.dynamicPixelsPerUnit = 100;
+        scaler.dynamicPixelsPerUnit = 180; // Lebih tajam untuk World Space UI VR
 
         canvasGO.AddComponent<GraphicRaycaster>();
 
@@ -650,8 +651,8 @@ private IEnumerator EmergencyCall113Routine()
         billboardScript.smoothSpeed = 6.0f;
 
         RectTransform canvasRT = canvasGO.GetComponent<RectTransform>();
-        canvasRT.sizeDelta = new Vector2(800f, 700f);
-        canvasRT.localScale = Vector3.one * 0.0018f;
+        canvasRT.sizeDelta = new Vector2(1000f, 900f);
+        canvasRT.localScale = Vector3.one * 0.003f;
     }
 
     private void BuildUIComponents()
@@ -664,18 +665,18 @@ private IEnumerator EmergencyCall113Routine()
     // ─── Loading Panel ───
     private void BuildLoadingPanel()
     {
-        loadingPanel = CreateRoundedPanel(mainCanvas.gameObject, "LoadingPanel", new Vector2(500f, 240f),
+        loadingPanel = CreateRoundedPanel(mainCanvas.gameObject, "LoadingPanel", new Vector2(650f, 312f),
             new Color(0.05f, 0.07f, 0.12f, 0.96f), Vector2.zero);
 
-        CreateText(loadingPanel, "LoadingTitle", "MENYIAPKAN MISI", 26, FontStyles.Bold,
-            new Vector2(0f, 72f), Color.cyan);
+        CreateText(loadingPanel, "LoadingTitle", "MENYIAPKAN MISI", 34, FontStyles.Bold,
+            new Vector2(0f, 94f), Color.cyan);
 
         // Dot baris dekoratif
-        GameObject dotLine = CreateRoundedPanel(loadingPanel, "DotLine", new Vector2(30f, 3f),
-            new Color(0f, 0.8f, 1f, 0.6f), new Vector2(0f, 52f));
+        GameObject dotLine = CreateRoundedPanel(loadingPanel, "DotLine", new Vector2(39f, 4f),
+            new Color(0f, 0.8f, 1f, 0.6f), new Vector2(0f, 68f));
 
-        GameObject barBg = CreateRoundedPanel(loadingPanel, "ProgressBG", new Vector2(420f, 18f),
-            new Color(0.14f, 0.18f, 0.28f, 1f), new Vector2(0f, 14f));
+        GameObject barBg = CreateRoundedPanel(loadingPanel, "ProgressBG", new Vector2(546f, 23f),
+            new Color(0.14f, 0.18f, 0.28f, 1f), new Vector2(0f, 18f));
 
         GameObject barFill = new GameObject("ProgressFill");
         barFill.transform.SetParent(barBg.transform, false);
@@ -689,10 +690,10 @@ private IEnumerator EmergencyCall113Routine()
         fillRT.sizeDelta = Vector2.zero;
         fillRT.anchoredPosition = Vector2.zero;
 
-        loadingPercentText = CreateText(loadingPanel, "PercentText", "0%", 22, FontStyles.Bold,
-            new Vector2(0f, -18f), Color.white);
-        loadingStatusText = CreateText(loadingPanel, "StatusText", "Menginisialisasi...", 14,
-            FontStyles.Italic, new Vector2(0f, -58f), new Color(0.7f, 0.85f, 1f));
+        loadingPercentText = CreateText(loadingPanel, "PercentText", "0%", 28, FontStyles.Bold,
+            new Vector2(0f, -23f), Color.white);
+        loadingStatusText = CreateText(loadingPanel, "StatusText", "Menginisialisasi...", 17,
+            FontStyles.Italic, new Vector2(0f, -76f), new Color(0.7f, 0.85f, 1f));
     }
 
 // ─── Phone Panel — iPhone 16 Pro Max Style ───
@@ -706,18 +707,21 @@ private IEnumerator EmergencyCall113Routine()
         phoneContainerRT.anchorMax = new Vector2(0.5f, 0.5f);
         phoneContainerRT.pivot = new Vector2(0.5f, 0.5f);
         phoneContainerRT.anchoredPosition = Vector2.zero;
-        phoneContainerRT.sizeDelta = new Vector2(320f, 600f);
+        phoneContainerRT.sizeDelta = new Vector2(420f, 780f);
+        // HP dibuat sedikit lebih besar tanpa mengubah layout internal tombol/teks.
+        // Semua elemen di dalam HP ikut membesar secara proporsional.
+        phoneContainerRT.localScale = Vector3.one * 1.20f;
 
         // ── Outer frame (Titanium Natural / Black Titanium) ──
-        GameObject outerShadow = CreateRoundedPanel(phoneCallPanel, "OuterShadow", new Vector2(322f, 602f),
+        GameObject outerShadow = CreateRoundedPanel(phoneCallPanel, "OuterShadow", new Vector2(422f, 782f),
             new Color(0f, 0f, 0f, 0.7f), Vector2.zero);
         outerShadow.GetComponent<RectTransform>().anchoredPosition = new Vector2(3f, -4f);
 
-        GameObject phoneChassis = CreateRoundedPanel(phoneCallPanel, "PhoneChassis", new Vector2(315f, 596f),
+        GameObject phoneChassis = CreateRoundedPanel(phoneCallPanel, "PhoneChassis", new Vector2(415f, 776f),
             new Color(0.10f, 0.10f, 0.12f, 1f), Vector2.zero);
 
         // Titanium edge highlight (inner ring)
-        GameObject titaniumRing = CreateRoundedPanel(phoneChassis, "TitaniumRing", new Vector2(308f, 589f),
+        GameObject titaniumRing = CreateRoundedPanel(phoneChassis, "TitaniumRing", new Vector2(408f, 769f),
             new Color(0.18f, 0.18f, 0.22f, 1f), Vector2.zero);
 
         // Side volume buttons (left)
@@ -733,7 +737,7 @@ private IEnumerator EmergencyCall113Routine()
             new Color(0.16f, 0.16f, 0.20f, 1f), new Vector2(159f, 85f));
 
         // ── Screen glass display ──
-        GameObject phoneScreen = CreateRoundedPanel(phoneChassis, "PhoneScreen", new Vector2(298f, 578f),
+        GameObject phoneScreen = CreateRoundedPanel(phoneChassis, "PhoneScreen", new Vector2(398f, 758f),
             new Color(0.04f, 0.04f, 0.06f, 1f), Vector2.zero);
 
         // Screen top specular glare
@@ -741,18 +745,18 @@ private IEnumerator EmergencyCall113Routine()
             new Color(1f, 1f, 1f, 0.06f), new Vector2(0f, 265f));
 
         // ── Dynamic Island (Notch pill) ──
-        GameObject island = CreateRoundedPanel(phoneScreen, "DynamicIsland", new Vector2(88f, 22f),
-            new Color(0.01f, 0.01f, 0.01f, 1f), new Vector2(0f, 263f));
+        GameObject island = CreateRoundedPanel(phoneScreen, "DynamicIsland", new Vector2(115f, 28f),
+            new Color(0.01f, 0.01f, 0.01f, 1f), new Vector2(0f, 343f));
 
         // Camera dot inside island
-        Image camDot = CreateCircleImage(island, "CamDot", 7f, new Color(0.08f, 0.12f, 0.25f, 1f),
-            new Vector2(30f, 0f));
+        Image camDot = CreateCircleImage(island, "CamDot", 9f, new Color(0.08f, 0.12f, 0.25f, 1f),
+            new Vector2(39f, 0f));
 
         // ── Status Bar ──
-        CreateText(phoneScreen, "SBTime", "9:41", 10, FontStyles.Bold,
-            new Vector2(-110f, 261f), Color.white);
-        CreateText(phoneScreen, "SBIcons", "5G  ▐▌ 100%", 9, FontStyles.Normal,
-            new Vector2(100f, 261f), Color.white);
+        CreateText(phoneScreen, "SBTime", "9:41", 12, FontStyles.Bold,
+            new Vector2(-150f, 341f), Color.white);
+        CreateText(phoneScreen, "SBIcons", "5G  ▐▌ 100%", 11, FontStyles.Normal,
+            new Vector2(130f, 341f), Color.white);
 
         // ── CALL STATE: Incoming/Outgoing screen ──
         GameObject callStateArea = new GameObject("CallStateArea");
@@ -761,38 +765,38 @@ private IEnumerator EmergencyCall113Routine()
         callAreaRT.anchorMin = new Vector2(0.5f, 0.5f);
         callAreaRT.anchorMax = new Vector2(0.5f, 0.5f);
         callAreaRT.pivot = new Vector2(0.5f, 0.5f);
-        callAreaRT.anchoredPosition = new Vector2(0f, 135f); // Dinaikkan sedikit agar tidak menabrak grid angka
-        callAreaRT.sizeDelta = new Vector2(290f, 260f);
+        callAreaRT.anchoredPosition = new Vector2(0f, 175f); // Dinaikkan sedikit agar tidak menabrak grid angka
+        callAreaRT.sizeDelta = new Vector2(380f, 340f);
 
         // Concentric Ripple Rings
         rippleRings = new Image[4];
         for (int r = 0; r < 4; r++)
         {
-            float size = 70f + r * 18f;
+            float size = 90f + r * 24f;
             GameObject ringGO = CreateCircleImageGO(callStateArea, $"Ring_{r}", size, new Color(1f, 0.22f, 0.22f, 0.35f));
             rippleRings[r] = ringGO.GetComponent<Image>();
-            ringGO.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 60f);
+            ringGO.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 78f);
         }
 
         // Avatar halo glow
-        GameObject haloGO = CreateCircleImageGO(callStateArea, "AvatarHalo", 86f, new Color(0.9f, 0.15f, 0.15f, 0.5f));
+        GameObject haloGO = CreateCircleImageGO(callStateArea, "AvatarHalo", 112f, new Color(0.9f, 0.15f, 0.15f, 0.5f));
         phoneAvatarPulseHalo = haloGO.GetComponent<Image>();
-        haloGO.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 60f);
+        haloGO.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 78f);
 
         // Avatar circle background
-        GameObject avatarBg = CreateCircleImageGO(callStateArea, "AvatarBG", 72f, new Color(0.15f, 0.15f, 0.22f, 1f));
-        avatarBg.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 60f);
+        GameObject avatarBg = CreateCircleImageGO(callStateArea, "AvatarBG", 94f, new Color(0.15f, 0.15f, 0.22f, 1f));
+        avatarBg.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 78f);
 
         // Avatar Red Slot
-        GameObject avatarRed = CreateCircleImageGO(callStateArea, "AvatarRed", 68f, new Color(0.8f, 0.08f, 0.08f, 0.7f));
-        avatarRed.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 60f);
+        GameObject avatarRed = CreateCircleImageGO(callStateArea, "AvatarRed", 88f, new Color(0.8f, 0.08f, 0.08f, 0.7f));
+        avatarRed.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 78f);
         avatarRed.transform.SetSiblingIndex(avatarBg.transform.GetSiblingIndex());
         avatarCenterImage = avatarRed.GetComponent<Image>();
 
-        avatarCenterText = CreateText(avatarBg, "PhoneIcon", "\u260E", 32, FontStyles.Bold,
+        avatarCenterText = CreateText(avatarBg, "PhoneIcon", "\u260E", 40, FontStyles.Bold,
             new Vector2(0f, 2f), Color.white);
 
-        GameObject avatarCustomImg = CreateCircleImageGO(avatarBg, "AvatarCustomIcon", 60f, Color.white);
+        GameObject avatarCustomImg = CreateCircleImageGO(avatarBg, "AvatarCustomIcon", 78f, Color.white);
         avatarCustomImg.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
         avatarCenterImage = avatarCustomImg.GetComponent<Image>();
         avatarCenterImage.sprite = circleSprite;
@@ -800,17 +804,17 @@ private IEnumerator EmergencyCall113Routine()
         avatarCenterImage.gameObject.SetActive(false);
 
         // Contact name & Status teks
-        CreateText(callStateArea, "ContactName", "DAMKAR DARURAT", 16, FontStyles.Bold,
-            new Vector2(0f, 10f), Color.white);
-        CreateText(callStateArea, "ContactSub", "Dinas Pemadam Kebakaran", 10, FontStyles.Normal,
-            new Vector2(0f, -8f), new Color(0.65f, 0.7f, 0.8f));
+        CreateText(callStateArea, "ContactName", "DAMKAR DARURAT", 20, FontStyles.Bold,
+            new Vector2(0f, 13f), Color.white);
+        CreateText(callStateArea, "ContactSub", "Dinas Pemadam Kebakaran", 12, FontStyles.Normal,
+            new Vector2(0f, -10f), new Color(0.65f, 0.7f, 0.8f));
 
-        phoneDialText = CreateText(callStateArea, "DialText", "", 28, FontStyles.Bold,
-            new Vector2(0f, -30f), new Color(1f, 0.88f, 0.2f));
-        phoneDialText.characterSpacing = 8f;
+        phoneDialText = CreateText(callStateArea, "DialText", "", 36, FontStyles.Bold,
+            new Vector2(0f, -39f), new Color(1f, 0.88f, 0.2f));
+        phoneDialText.characterSpacing = 10f;
 
-        phoneStatusText = CreateText(callStateArea, "PhoneStatus", "Masukkan Nomor...", 11, FontStyles.Normal,
-            new Vector2(0f, -58f), new Color(0.7f, 0.75f, 0.9f));
+        phoneStatusText = CreateText(callStateArea, "PhoneStatus", "Masukkan Nomor...", 13, FontStyles.Normal,
+            new Vector2(0f, -75f), new Color(0.7f, 0.75f, 0.9f));
 
         // Equalizer Waveform Bars
         GameObject eqContainer = new GameObject("EQContainer");
@@ -819,27 +823,27 @@ private IEnumerator EmergencyCall113Routine()
         eqRT.anchorMin = new Vector2(0.5f, 0.5f);
         eqRT.anchorMax = new Vector2(0.5f, 0.5f);
         eqRT.pivot = new Vector2(0.5f, 0.5f);
-        eqRT.anchoredPosition = new Vector2(0f, -80f);
-        eqRT.sizeDelta = new Vector2(100f, 40f);
+        eqRT.anchoredPosition = new Vector2(0f, -104f);
+        eqRT.sizeDelta = new Vector2(130f, 52f);
 
         equalizerBars = new Image[7];
         for (int i = 0; i < 7; i++)
         {
-            float px = -42f + i * 14f;
-            GameObject barGO = CreateRoundedPanel(eqContainer, $"EQ_{i}", new Vector2(7f, 24f),
+            float px = -55f + i * 18f;
+            GameObject barGO = CreateRoundedPanel(eqContainer, $"EQ_{i}", new Vector2(9f, 31f),
                 new Color(1f, 0.32f, 0.18f, 0.95f), new Vector2(px, 0f));
             equalizerBars[i] = barGO.GetComponent<Image>();
         }
 
         // ── Message dispatch box ──
-        GameObject msgBox = CreateRoundedPanel(phoneScreen, "MsgBox", new Vector2(270f, 95f),
-            new Color(0.09f, 0.11f, 0.18f, 0.97f), new Vector2(0f, -95f));
+        GameObject msgBox = CreateRoundedPanel(phoneScreen, "MsgBox", new Vector2(360f, 124f),
+            new Color(0.09f, 0.11f, 0.18f, 0.97f), new Vector2(0f, -124f));
 
-        phoneDispatchMessage = CreateText(msgBox, "DispatchMsg", "", 11, FontStyles.Normal,
+        phoneDispatchMessage = CreateText(msgBox, "DispatchMsg", "", 13, FontStyles.Normal,
             Vector2.zero, Color.white);
         phoneDispatchMessage.alignment = TextAlignmentOptions.Center;
         RectTransform msgRT = phoneDispatchMessage.GetComponent<RectTransform>();
-        msgRT.sizeDelta = new Vector2(255f, 90f);
+        msgRT.sizeDelta = new Vector2(345f, 117f);
         msgBox.SetActive(false);
 
         // ── DIAL PAD GRID (Dilebarkan & Diperbesar ukurannya agar tidak menumpuk) ──
@@ -852,8 +856,8 @@ private IEnumerator EmergencyCall113Routine()
         gridRT.anchorMin = new Vector2(0.5f, 0.5f);
         gridRT.anchorMax = new Vector2(0.5f, 0.5f);
         gridRT.pivot = new Vector2(0.5f, 0.5f);
-        gridRT.anchoredPosition = new Vector2(0f, -60f); // Posisi grid disesuaikan tengah-bawah
-        gridRT.sizeDelta = new Vector2(220f, 200f);     // Ukuran container diperbesar
+        gridRT.anchoredPosition = new Vector2(0f, -78f); // Posisi grid disesuaikan tengah-bawah
+        gridRT.sizeDelta = new Vector2(288f, 260f);     // Ukuran container diperbesar
 
         for (int i = 0; i < padLabels.Length; i++)
         {
@@ -861,8 +865,8 @@ private IEnumerator EmergencyCall113Routine()
             int row = i / 3;
 
             // Spacing antar tombol diperlebar secara merata
-            float px = -70f + col * 70f;
-            float py = 75f - row * 50f;
+            float px = -91f + col * 91f;
+            float py = 98f - row * 65f;
 
             GameObject btnContainer = new GameObject($"PadKey_{padLabels[i]}");
             btnContainer.transform.SetParent(dialpadGrid.transform, false);
@@ -872,17 +876,17 @@ private IEnumerator EmergencyCall113Routine()
             btnContRT.anchorMax = new Vector2(0.5f, 0.5f);
             btnContRT.pivot = new Vector2(0.5f, 0.5f);
             btnContRT.anchoredPosition = new Vector2(px, py);
-            btnContRT.sizeDelta = new Vector2(45f, 45f);
+            btnContRT.sizeDelta = new Vector2(59f, 59f);
 
-            GameObject padBg = CreateCircleImageGO(btnContainer, "PadBG", 40f, new Color(0.18f, 0.2f, 0.28f, 0.9f));
+            GameObject padBg = CreateCircleImageGO(btnContainer, "PadBG", 52f, new Color(0.18f, 0.2f, 0.28f, 0.9f));
             padBg.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
             dialPadButtons[i] = padBg.GetComponent<Image>();
 
-            CreateText(btnContainer, "KeyLabel", padLabels[i], 16, FontStyles.Bold, new Vector2(0f, 0f), Color.white);
+            CreateText(btnContainer, "KeyLabel", padLabels[i], 20, FontStyles.Bold, new Vector2(0f, 0f), Color.white);
         }
 
         // ── TOMBOL KONTROL BAWAH (Mute, Call, End) — Berjejer Horisontal Rapi ──
-        float bottomRowY = -200f; // Koordinat Y untuk seluruh baris tombol bawah
+        float bottomRowY = -260f; // Koordinat Y untuk seluruh baris tombol bawah
 
         // 1. Tombol Mute (Kiri)
         GameObject muteBtnContainer = new GameObject("MuteBtn");
@@ -891,14 +895,14 @@ private IEnumerator EmergencyCall113Routine()
         muteContRT.anchorMin = new Vector2(0.5f, 0.5f);
         muteContRT.anchorMax = new Vector2(0.5f, 0.5f);
         muteContRT.pivot = new Vector2(0.5f, 0.5f);
-        muteContRT.anchoredPosition = new Vector2(-75f, bottomRowY); // Di sebelah kiri tombol call
-        muteContRT.sizeDelta = new Vector2(46f, 46f);
+        muteContRT.anchoredPosition = new Vector2(-98f, bottomRowY); // Di sebelah kiri tombol call
+        muteContRT.sizeDelta = new Vector2(60f, 60f);
 
-        GameObject muteCircle = CreateCircleImageGO(muteBtnContainer, "MuteCircle", 44f, new Color(0.22f, 0.24f, 0.33f, 1f));
+        GameObject muteCircle = CreateCircleImageGO(muteBtnContainer, "MuteCircle", 57f, new Color(0.22f, 0.24f, 0.33f, 1f));
         muteCircle.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
-        muteIconText = CreateText(muteBtnContainer, "MuteIconText", "M", 16, FontStyles.Bold, new Vector2(0f, 1f), Color.white);
+        muteIconText = CreateText(muteBtnContainer, "MuteIconText", "M", 20, FontStyles.Bold, new Vector2(0f, 1f), Color.white);
 
-        GameObject muteIconGO = CreateCircleImageGO(muteBtnContainer, "MuteIconImg", 24f, Color.white);
+        GameObject muteIconGO = CreateCircleImageGO(muteBtnContainer, "MuteIconImg", 31f, Color.white);
         muteIconGO.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 1f);
         muteIconImage = muteIconGO.GetComponent<Image>();
         muteIconImage.preserveAspect = true;
@@ -912,15 +916,15 @@ private IEnumerator EmergencyCall113Routine()
         callContRT.anchorMax = new Vector2(0.5f, 0.5f);
         callContRT.pivot = new Vector2(0.5f, 0.5f);
         callContRT.anchoredPosition = new Vector2(0f, bottomRowY); // Berada tepat di tengah
-        callContRT.sizeDelta = new Vector2(52f, 52f);
+        callContRT.sizeDelta = new Vector2(68f, 68f);
 
-        GameObject callCircle = CreateCircleImageGO(callBtnContainer, "CallCircle", 50f, new Color(0.1f, 0.78f, 0.3f, 1f));
+        GameObject callCircle = CreateCircleImageGO(callBtnContainer, "CallCircle", 65f, new Color(0.1f, 0.78f, 0.3f, 1f));
         callCircle.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
         dialPadButtons[padLabels.Length] = callCircle.GetComponent<Image>();
 
-        callIconText = CreateText(callBtnContainer, "CallIconText", "\u260E", 24, FontStyles.Bold, new Vector2(0f, 1f), Color.white);
+        callIconText = CreateText(callBtnContainer, "CallIconText", "\u260E", 31, FontStyles.Bold, new Vector2(0f, 1f), Color.white);
 
-        GameObject callIconGO = CreateCircleImageGO(callBtnContainer, "CallIconImg", 30f, Color.white);
+        GameObject callIconGO = CreateCircleImageGO(callBtnContainer, "CallIconImg", 39f, Color.white);
         callIconGO.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 1f);
         callIconImage = callIconGO.GetComponent<Image>();
         callIconImage.preserveAspect = true;
@@ -933,14 +937,14 @@ private IEnumerator EmergencyCall113Routine()
         endContRT.anchorMin = new Vector2(0.5f, 0.5f);
         endContRT.anchorMax = new Vector2(0.5f, 0.5f);
         endContRT.pivot = new Vector2(0.5f, 0.5f);
-        endContRT.anchoredPosition = new Vector2(75f, bottomRowY); // Di sebelah kanan tombol call
-        endContRT.sizeDelta = new Vector2(46f, 46f);
+        endContRT.anchoredPosition = new Vector2(98f, bottomRowY); // Di sebelah kanan tombol call
+        endContRT.sizeDelta = new Vector2(60f, 60f);
 
-        GameObject endCircle = CreateCircleImageGO(endBtnContainer, "EndCircle", 44f, new Color(0.85f, 0.12f, 0.12f, 1f));
+        GameObject endCircle = CreateCircleImageGO(endBtnContainer, "EndCircle", 57f, new Color(0.85f, 0.12f, 0.12f, 1f));
         endCircle.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
-        endIconText = CreateText(endBtnContainer, "EndIconText", "✕", 16, FontStyles.Bold, new Vector2(0f, 1f), Color.white);
+        endIconText = CreateText(endBtnContainer, "EndIconText", "✕", 20, FontStyles.Bold, new Vector2(0f, 1f), Color.white);
 
-        GameObject endIconGO = CreateCircleImageGO(endBtnContainer, "EndIconImg", 24f, Color.white);
+        GameObject endIconGO = CreateCircleImageGO(endBtnContainer, "EndIconImg", 31f, Color.white);
         endIconGO.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 1f);
         endIconImage = endIconGO.GetComponent<Image>();
         endIconImage.preserveAspect = true;
@@ -948,41 +952,41 @@ private IEnumerator EmergencyCall113Routine()
 
         // Wallpaper & Home Bar
         phoneScreenBgImage = phoneScreen.GetComponent<Image>();
-        GameObject homeBar = CreateRoundedPanel(phoneScreen, "HomeBar", new Vector2(90f, 4f),
-            new Color(0.5f, 0.5f, 0.6f, 0.5f), new Vector2(0f, -271f));
+        GameObject homeBar = CreateRoundedPanel(phoneScreen, "HomeBar", new Vector2(117f, 5f),
+            new Color(0.5f, 0.5f, 0.6f, 0.5f), new Vector2(0f, -353f));
     }
 
     // ─── Victory Grade Box ───
     private void BuildVictoryPanel()
     {
         victoryPanel = CreateRoundedPanel(mainCanvas.gameObject, "VictoryPanel",
-            new Vector2(560f, 420f), new Color(0.04f, 0.06f, 0.10f, 0.97f), Vector2.zero);
+            new Vector2(728f, 546f), new Color(0.04f, 0.06f, 0.10f, 0.97f), Vector2.zero);
 
         // Top accent line
-        CreateRoundedPanel(victoryPanel, "AccentLine", new Vector2(90f, 4f),
-            new Color(1f, 0.84f, 0f, 0.8f), new Vector2(0f, 185f));
+        CreateRoundedPanel(victoryPanel, "AccentLine", new Vector2(117f, 5f),
+            new Color(1f, 0.84f, 0f, 0.8f), new Vector2(0f, 241f));
 
-        victoryTitleText = CreateText(victoryPanel, "VicTitle", "SIMULASI SELESAI!", 28,
-            FontStyles.Bold, new Vector2(0f, 158f), Color.yellow);
-        victoryTimeText = CreateText(victoryPanel, "VicTime", "Waktu Pemadaman: 00:00.0s", 18,
-            FontStyles.Normal, new Vector2(0f, 118f), new Color(0.85f, 0.9f, 1f));
+        victoryTitleText = CreateText(victoryPanel, "VicTitle", "SIMULASI SELESAI!", 36,
+            FontStyles.Bold, new Vector2(0f, 206f), Color.yellow);
+        victoryTimeText = CreateText(victoryPanel, "VicTime", "Waktu Pemadaman: 00:00.0s", 23,
+            FontStyles.Normal, new Vector2(0f, 154f), new Color(0.85f, 0.9f, 1f));
 
         // Grade circle
-        GameObject gradeCircle = CreateCircleImageGO(victoryPanel, "GradeCircle", 110f,
+        GameObject gradeCircle = CreateCircleImageGO(victoryPanel, "GradeCircle", 143f,
             new Color(0.08f, 0.10f, 0.18f, 1f));
-        gradeCircle.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 22f);
+        gradeCircle.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 29f);
 
         // Grade border ring
-        GameObject gradeBorderRing = CreateCircleImageGO(victoryPanel, "GradeBorder", 118f,
+        GameObject gradeBorderRing = CreateCircleImageGO(victoryPanel, "GradeBorder", 154f,
             new Color(1f, 0.84f, 0f, 0.3f));
-        gradeBorderRing.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 22f);
+        gradeBorderRing.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 29f);
 
-        victoryGradeBadgeText = CreateText(gradeCircle, "GradeBadge", "S", 68, FontStyles.Bold,
+        victoryGradeBadgeText = CreateText(gradeCircle, "GradeBadge", "S", 88, FontStyles.Bold,
             new Vector2(0f, 5f), new Color(1f, 0.84f, 0f));
 
-        victoryDescriptionText = CreateText(victoryPanel, "VicDesc", "Deskripsi hasil...", 14,
-            FontStyles.Italic, new Vector2(0f, -78f), new Color(0.82f, 0.88f, 1f));
-        victoryDescriptionText.GetComponent<RectTransform>().sizeDelta = new Vector2(510f, 60f);
+        victoryDescriptionText = CreateText(victoryPanel, "VicDesc", "Deskripsi hasil...", 17,
+            FontStyles.Italic, new Vector2(0f, -101f), new Color(0.82f, 0.88f, 1f));
+        victoryDescriptionText.GetComponent<RectTransform>().sizeDelta = new Vector2(663f, 78f);
 
         // Restart button (circle-rounded)
         GameObject restartGO = new GameObject("RestartBtn");
@@ -991,8 +995,8 @@ private IEnumerator EmergencyCall113Routine()
         restartRT.anchorMin = new Vector2(0.5f, 0.5f);
         restartRT.anchorMax = new Vector2(0.5f, 0.5f);
         restartRT.pivot = new Vector2(0.5f, 0.5f);
-        restartRT.anchoredPosition = new Vector2(0f, -148f);
-        restartRT.sizeDelta = new Vector2(220f, 46f);
+        restartRT.anchoredPosition = new Vector2(0f, -193f);
+        restartRT.sizeDelta = new Vector2(286f, 60f);
 
         Image restartImg = restartGO.AddComponent<Image>();
         restartImg.color = new Color(0.1f, 0.6f, 0.3f, 1f);
@@ -1000,7 +1004,7 @@ private IEnumerator EmergencyCall113Routine()
         Button restartBtn = restartGO.AddComponent<Button>();
         restartBtn.onClick.AddListener(RestartSimulation);
 
-        CreateText(restartGO, "RestartLabel", "ULANGI SIMULASI", 16, FontStyles.Bold,
+        CreateText(restartGO, "RestartLabel", "ULANGI SIMULASI", 20, FontStyles.Bold,
             Vector2.zero, Color.white);
     }
 

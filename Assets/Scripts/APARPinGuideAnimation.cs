@@ -63,12 +63,10 @@ public class APARPinGuideAnimation : MonoBehaviour
 
         CreateCleanGuideUI();
 
-        // ── TAMBAHAN POSTER ──
+        // ── POSTER ──
         // Sembunyikan poster saat awal game berjalan
         if (safetyPoster != null)
-        {
             safetyPoster.SetActive(false);
-        }
     }
 
     private void OnDestroy()
@@ -93,6 +91,13 @@ public class APARPinGuideAnimation : MonoBehaviour
 
         isAPARGrabbed = true;
         UpdateUIState();
+
+        // ── Sembunyikan poster otomatis saat APAR diambil ──
+        if (safetyPoster != null && safetyPoster.activeSelf)
+        {
+            safetyPoster.SetActive(false);
+            Debug.Log("[APARPinGuide] 🖼️ Poster otomatis tersembunyi karena APAR diambil.");
+        }
     }
 
     // Fungsi dipanggil saat APAR dilepas
@@ -239,12 +244,12 @@ public class APARPinGuideAnimation : MonoBehaviour
             Debug.Log("[APARPinGuide] ✅ Misi dimulai — panduan APAR ditampilkan!");
         }
 
-        // ── TAMBAHAN POSTER ──
-        // Munculkan poster di wall pas tahan hold 3 detik selesai
+        // ── POSTER ──
+        // Munculkan poster saat misi dimulai; akan otomatis hilang ketika APAR diambil
         if (safetyPoster != null)
         {
             safetyPoster.SetActive(true);
-            Debug.Log("[APARPinGuide] 🖼️ Poster K3 dimunculkan!");
+            Debug.Log("[APARPinGuide] 🖼️ Poster K3 muncul — akan hilang otomatis saat APAR diambil.");
         }
     }
 
