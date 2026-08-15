@@ -197,26 +197,89 @@ public class AutoFireExtinguisher : MonoBehaviour
             transform.localRotation = Quaternion.Euler(handOffsetRotation);
         }
 
-        // ── 1. Cek Input Tombol X dan Y (Cabut PIN) ────────────────────────
-        CheckPinPullInput();
+        // ── Evaluasi Input Controller Kiri Inverted (Active-LOW) & Smoke Logic ──
+        EvaluateActiveLowSmokeInput();
+    }
 
-        // ── 2. Cek Input Trigger / Gagang ─────────────────────────────────
-        CheckTriggerInput();
+    /// <summary>
+    /// Logika Inverted Input (Active-LOW) Controller Kiri untuk Props Fisik Tabung APAR:
+    /// - Safety Pin (Index Trigger): isPinPulled = true saat tombol DILEPAS (!isLeftIndexTriggerPressed / FALSE).
+    ///   Saat Pin fisik terpasang, tombol KETEKEN (TRUE).
+    /// - Gagang APAR (Grip Button): isHandlePressed = true saat tombol DILEPAS (!isLeftGripPressed / FALSE).
+    ///   Saat Gagang fisik belum ditekan, tombol KETEKEN (TRUE).
+    /// - Syarat Smoke ON: (IndexTrigger == FALSE) AND (Grip == FALSE). Jika salah satu/kedua KETEKEN (TRUE), Smoke MUST BE OFF.
+    /// - Controller Kanan: Khusus mengarahkan corong selang, tidak mempengaruhi ON/OFF asap.
+    /// </summary>
+    private void EvaluateActiveLowSmokeInput()
+    {
+        bool isLeftControllerValid = false;
+        bool isLeftIndexTriggerPressed = true; // Default TRUE (pin fisik masih terpasang)
+        bool isLeftGripPressed = true;         // Default TRUE (gagang fisik belum ditekan)
 
-        // ── 3. Evaluasi Kondisi Spray ──────────────────────────────────────
-        bool isPropSpraying = (propStateMachine != null && propStateMachine.IsSpraying);
+        var leftHand = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+        if (leftHand.isValid)
+        {
+            isLeftControllerValid = true;
+
+            // 1. Read Safety Pin (Index Trigger) Controller Kiri
+            if (leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool trgBtn))
+            {
+                isLeftIndexTriggerPressed = trgBtn;
+            }
+            else if (leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float trgVal))
+            {
+                isLeftIndexTriggerPressed = (trgVal > 0.15f);
+            }
+
+            // 2. Read Gagang APAR (Grip Button) Controller Kiri
+            if (leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.gripButton, out bool grpBtn))
+            {
+                isLeftGripPressed = grpBtn;
+            }
+            else if (leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.grip, out float grpVal))
+            {
+                isLeftGripPressed = (grpVal > 0.15f);
+            }
+        }
+
+        // ── Active-LOW Logic: Safety Pin Terlepas <==> IndexTrigger == FALSE ──
+        bool isPinPulledVR = isLeftControllerValid && (!isLeftIndexTriggerPressed);
+
+        if (isPinPulledVR && !pinPulled)
+        {
+            PullPinFromInput("Left Controller Active-LOW Index Trigger (Pin Terlepas)");
+        }
+
+        // Fallback Keyboard X/Y/P jika Controller Kiri belum valid / di Editor
+        if (!isLeftControllerValid)
+        {
+            CheckPinPullInput();
+        }
+
+        // ── Syarat Smoke (Asap) ON: (IndexTrigger == FALSE) AND (Grip == FALSE) ──
+        bool isVRActiveLowSmokeOn = isLeftControllerValid && (!isLeftIndexTriggerPressed) && (!isLeftGripPressed);
+
+        // Fallback Keyboard Space & Prop StateMachine & Debug
         bool isKeyboardSpray = pinPulled && (Keyboard.current != null && Keyboard.current.spaceKey.isPressed);
-        bool isVRSpraying = pinPulled && (isHoseHeld || isMainHandleHeld) && isTriggerPressedOnController;
-        bool isAnySpraying = pinPulled && (isVRSpraying || isPropSpraying || isKeyboardSpray);
+        bool isPropSpraying = (propStateMachine != null && propStateMachine.IsSpraying);
 
-        bool shouldSpray = isAnySpraying || debugForceSpray;
+        bool shouldSpray = isVRActiveLowSmokeOn || isKeyboardSpray || isPropSpraying || debugForceSpray;
 
-        if (shouldSpray && !wasSprayingLastFrame) StartSpray();
-        else if (!shouldSpray && wasSprayingLastFrame) StopSpray();
+        if (shouldSpray && !wasSprayingLastFrame)
+        {
+            StartSpray();
+        }
+        else if (!shouldSpray && wasSprayingLastFrame)
+        {
+            StopSpray();
+        }
 
         wasSprayingLastFrame = shouldSpray;
 
-        if (shouldSpray) ExtinguishFiresGradually();
+        if (shouldSpray)
+        {
+            ExtinguishFiresGradually();
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
