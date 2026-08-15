@@ -2,19 +2,6 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 
-/// <summary>
-/// Indikator UI dunia nyata (World Space) yang mengarahkan pemain untuk mencabut pin APAR.
-/// 
-/// CARA SETUP DI UNITY:
-/// 1. Attach script ini ke GameObject APAR (parent yang punya AutoFireExtinguisher)
-/// 2. Assign 'mainExtinguisher' ke script AutoFireExtinguisher di APAR body
-/// 3. Assign 'pinTransform' ke Transform GameObject pin APAR
-///
-/// Indikator akan:
-/// - Muncul di atas pin dengan animasi bob + pulse
-/// - Menampilkan panah ▼ dan teks "CABUT PIN DULU!"
-/// - Hilang otomatis saat pin berhasil dicabut (pinPulled = true)
-/// </summary>
 public class APARPinIndicator : MonoBehaviour
 {
     [Header("Referensi (Wajib Diisi)")]

@@ -1,14 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Script Optimasi VR Otomatis (VR Auto-Optimizer).
-/// 
-/// FUNGSI:
-///   1. Mengunci Target Frame Rate ke 90 FPS (smooth tanpa patah-patah).
-///   2. Mematikan modul Particle Collision pada asap APAR (menghilangkan CPU lag spikes).
-///   3. Memperbesar ukuran fisik partikel asap (Visual TETAP TEBAL & MEMUKAU meski partikel sedikit).
-///   4. Mengoptimasi semua lampu api real-time agar tidak membebani GPU Meta Quest.
-/// </summary>
 public class VROptimizer : MonoBehaviour
 {
     [Header("Target Framerate VR")]

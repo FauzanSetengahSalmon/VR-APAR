@@ -4,19 +4,6 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Manager UI & Alur Simulasi VR APAR Terpadu:
-/// 1. Menggunakan UI LANDING PAGE asli bawaan scene (Tanpa UI ganda).
-/// 2. Animasi Loading Futuristic Glassmorphism Card (0 - 100%).
-/// 3. Animasi Panggilan Darurat 113 bergaya iPhone 16 Pro Max Premium:
-///    - Frame HP Titanium Ultra Premium dengan Dynamic Island.
-///    - Tombol numpad dial klik-klik animasi.
-///    - Avatar & tombol lingkaran (circle sprite).
-///    - Audio Waveform Bars & Concentric Ripple Rings saat ringing.
-///    - Typewriter message dari Petugas Damkar 113.
-/// 4. Timer TIDAK ditampilkan saat misi aktif — muncul hanya di Victory Box.
-/// 5. Pop-up Kotak Penilaian / Grade Box (S, A, B, C, F & Waktu Padam).
-/// </summary>
 public class VRSimulationUIManager : MonoBehaviour
 {
     public static VRSimulationUIManager Instance { get; private set; }
@@ -151,30 +138,11 @@ public class VRSimulationUIManager : MonoBehaviour
     //  MISSION LOCK SYSTEM
     // ═══════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Kunci semua interaksi APAR di scene (dipanggil di awal sebelum misi dimulai).
-    /// Semua grab, pin, spray, dan UI indikator akan tidak aktif.
-    /// </summary>
     private void LockAllAPAR()
     {
-        // APARPropStateMachine — kunci logic pin dan lever
-        // (tidak perlu action khusus: isMissionStarted = false sudah by default)
-
-        // APARPinIndicator — canvas sudah disembunyikan otomatis saat dibuat
-        // (tidak perlu action khusus)
-
-        // APARHoseGrabber — isMissionStarted sudah false by default
-        // (tidak perlu action khusus)
-
-        // APARPin — isMissionStarted sudah false by default
-        // (tidak perlu action khusus)
-
         Debug.Log("[VRUIManager] 🔒 Semua interaksi APAR dikunci. Tunggu hold Mulai Misi.");
     }
 
-    /// <summary>
-    /// Buka kunci semua interaksi APAR di scene (dipanggil setelah animasi selesai, misi aktif).
-    /// </summary>
     private void UnlockAllAPAR()
     {
         // Buka kunci semua APARPropStateMachine
@@ -212,11 +180,6 @@ public class VRSimulationUIManager : MonoBehaviour
                   $"{aparPins.Length} APARPin, {extinguishers.Length} Extinguisher, {pinGuides.Length} PinGuide");
     }
 
-    /// <summary>
-    /// Terapkan Sprite custom yang di-assign di Inspector ke slot Image HP.
-    /// Setiap slot: jika Sprite != null → tampilkan gambar, sembunyikan teks fallback.
-    ///              jika Sprite == null → tampilkan teks unicode fallback.
-    /// </summary>
     private void ApplyCustomIcons()
     {
         // ─ Avatar center ─

@@ -8,16 +8,6 @@ using XRInputDevice = UnityEngine.XR.InputDevice;
 using XRInputDevices = UnityEngine.XR.InputDevices;
 using XRCommonUsages = UnityEngine.XR.CommonUsages;
 
-/// <summary>
-/// Script Animasi & Visual Tangan VR (VR Hand Animator Controller, Procedural Finger Flexing & Skin Tone Visualizer).
-/// 
-/// FUNGSI & FITUR BARU:
-///   1. Membaca input analog Grip & Trigger dari Controller Meta Quest 3 / XR Simulator / Mouse.
-///   2. Menggerakkan jari-jari model tangan 3D secara presisi melalui Animator ATAU Procedural Bone Curling!
-///   3. Mencegah Tangan Hilang (menjamin SkinnedMeshRenderer tetap aktif di Mode Controller & Simulator).
-///   4. Menerapkan Warna Kulit Manusia Realistis (Human Skin Tone) ke Mesh Tangan VR tanpa merusak Depth Mask.
-///   5. Pose mengepal/genggam paksa (Full Grip 1.0) otomatis saat memegang APAR & Selang.
-/// </summary>
 public class VRHandAnimator : MonoBehaviour
 {
     public enum HandType

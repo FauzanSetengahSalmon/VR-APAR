@@ -2,9 +2,6 @@
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Checks for button input on an input action
-/// </summary>
 public class OnButtonPress : MonoBehaviour
 {
     [Tooltip("Actions to check")]

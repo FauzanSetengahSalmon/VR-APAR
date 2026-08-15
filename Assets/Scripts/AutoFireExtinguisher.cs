@@ -65,12 +65,21 @@ public class AutoFireExtinguisher : MonoBehaviour
 
     private APARPropStateMachine propStateMachine;
 
+    // ── Initial Transform Cache untuk Reset ─────────────────────────────────
+    private Vector3 initialWorldPosition;
+    private Quaternion initialWorldRotation;
+    private Transform initialParentTransform;
+
     // ═══════════════════════════════════════════════════════════════════════
     //  UNITY LIFECYCLE
     // ═══════════════════════════════════════════════════════════════════════
 
     private void Awake()
     {
+        initialWorldPosition = transform.position;
+        initialWorldRotation = transform.rotation;
+        initialParentTransform = transform.parent;
+
         grabInteractable = GetComponent<XRGrabInteractable>();
         propStateMachine = GetComponent<APARPropStateMachine>();
         if (propStateMachine == null) propStateMachine = GetComponentInParent<APARPropStateMachine>();
@@ -479,5 +488,53 @@ public class AutoFireExtinguisher : MonoBehaviour
             audioSource.Stop();
 
         Debug.Log("[APAR] 🚫 Spray MATI.");
+    }
+
+    /// <summary>
+    /// Kembalikan APAR ke posisi & rotasi semula tempat diletakkan di awal,
+    /// serta lepas dari genggaman tangan player.
+    /// </summary>
+    public void ResetToInitialPosition()
+    {
+        StopSpray();
+
+        // Lepas force grip pada tangan kiri (tempat tabung di-attach)
+        if (transform.parent != null)
+        {
+            VRHandAnimator handAnim = transform.parent.GetComponentInParent<VRHandAnimator>();
+            if (handAnim != null) handAnim.SetForceGrip(false);
+        }
+
+        isAttachedToHand = false;
+        isMainHandleHeld = false;
+        isHoseHeld = false;
+
+        // Reset parent & transform posisi awal tempat diletakkan
+        transform.SetParent(initialParentTransform);
+        transform.position = initialWorldPosition;
+        transform.rotation = initialWorldRotation;
+
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+
+        if (grabInteractable != null)
+            grabInteractable.enabled = true;
+
+        // Tampilkan kembali mesh selang statis jika ada
+        if (staticMeshSelang != null)
+            staticMeshSelang.SetActive(true);
+
+        // Reset corong & selang ke bodi tabung
+        APARHoseGrabber hoseGrabber = GetComponentInChildren<APARHoseGrabber>();
+        if (hoseGrabber != null)
+        {
+            hoseGrabber.ResetToRestPosition();
+        }
+
+        Debug.Log("[APAR] 🔄 APAR dilepas dari tangan dan dikembalikan ke posisi semula!");
     }
 }

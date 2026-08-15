@@ -3,11 +3,6 @@ using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
-/// <summary>
-/// Attach script ini ke GameObject pin APAR.
-/// Saat pin di-grab (dicabut), flag pinPulled di AutoFireExtinguisher akan aktif.
-/// Pin tidak bisa dipasang kembali setelah dicabut.
-/// </summary>
 public class APARPin : MonoBehaviour
 {
     [Header("Referensi")]

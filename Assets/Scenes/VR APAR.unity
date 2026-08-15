@@ -3380,6 +3380,9 @@ MonoBehaviour:
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
   holdDuration: 3
+  progressFillImage: {fileID: 0}
+  startFillColor: {r: 0, g: 0.85, b: 1, a: 0.9}
+  endFillColor: {r: 0.2, g: 1, b: 0.55, a: 1}
   OnHoldComplete:
     m_PersistentCalls:
       m_Calls:
@@ -4248,9 +4251,11 @@ MonoBehaviour:
   pinPulled: 1
   handOffsetPosition: {x: 0.2, y: -0.45, z: 0.4}
   handOffsetRotation: {x: 0, y: 90, z: 0}
+  staticMeshSelang: {fileID: 0}
   debugForceSpray: 0
   isMainHandleHeld: 0
   isHoseHeld: 0
+  nozzleTransform: {fileID: 0}
 --- !u!114 &1712824163
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5087,6 +5092,9 @@ MonoBehaviour:
   hoseThickness: 0.035
   hoseSagAmount: 0.2
   followSmoothSpeed: 30
+  nozzleHoldOffset: {x: 0.02, y: -0.05, z: 0.15}
+  nozzleHoldRotOffset: {x: 0, y: 180, z: 0}
+  hoseNozzleConnectOffset: {x: 0, y: 0, z: 0.03}
 --- !u!114 &1906971469
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5476,6 +5484,9 @@ MonoBehaviour:
   iconMuteBtn: {fileID: 21300000, guid: 0330a6025abdee24387daea45e29eddd, type: 3}
   iconEndBtn: {fileID: 21300000, guid: e1916b71efbd607478a9c6453d8a96b9, type: 3}
   phoneWallpaper: {fileID: 0}
+  uiSkorBintang1: {fileID: 21300000, guid: 7f33933212cd29c42bc61835cc50694d, type: 3}
+  uiSkorBintang2: {fileID: 21300000, guid: 3879d45363ea30a45b668885bd9e015b, type: 3}
+  uiSkorBintang3: {fileID: 21300000, guid: 7dea712ec0992c840a7b03cc7dec8d40, type: 3}
 --- !u!4 &1973280213
 Transform:
   m_ObjectHideFlags: 0

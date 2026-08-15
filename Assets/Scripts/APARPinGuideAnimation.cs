@@ -231,10 +231,6 @@ public class APARPinGuideAnimation : MonoBehaviour
         UpdateUIState();
     }
 
-    /// <summary>
-    /// Panggil method ini (dari VRSimulationUIManager) saat misi resmi dimulai.
-    /// Canvas panduan APAR dan Poster Safety akan tampil.
-    /// </summary>
     public void SetMissionStarted()
     {
         isMissionStarted = true;

@@ -3,16 +3,6 @@ using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
-/// <summary>
-/// Script Kontrol Corong APAR (Meta Quest 3 / XR Simulator).
-/// 
-/// TUGAS:
-///   - Corong (Cylinder.008 / "Corong") dipegang TANGAN KANAN
-///   - Otomatis menempel ke Tangan Kanan saat APAR di-grab oleh Tangan Kiri
-///   - Smoke (ParticleSystem anak dari Corong) otomatis mengikuti arah corong
-///   - Selang elastis (LineRenderer) menghubungkan leher tabung ke belakang corong
-///   - Selang SELALU tampil, lentur melengkung alami layaknya selang karet APAR asli
-/// </summary>
 public class APARHoseGrabber : MonoBehaviour
 {
     [Header("Referensi Utama")]
@@ -319,6 +309,30 @@ public class APARHoseGrabber : MonoBehaviour
     public void SetMissionStarted()
     {
         isMissionStarted = true;
+    }
+
+    /// <summary>
+    /// Lepas corong dari tangan kanan dan kembalikan ke posisi awal pada bodi APAR.
+    /// </summary>
+    public void ResetToRestPosition()
+    {
+        if (rightHandTransform != null)
+        {
+            VRHandAnimator handAnim = rightHandTransform.GetComponentInParent<VRHandAnimator>();
+            if (handAnim != null) handAnim.SetForceGrip(false);
+        }
+
+        isHoseGrabbed = false;
+        rightHandTransform = null;
+
+        if (mainExtinguisher != null)
+            mainExtinguisher.isHoseHeld = false;
+
+        if (transform.parent != null)
+        {
+            transform.localPosition = nozzleRestLocalPos;
+            transform.localRotation = nozzleRestLocalRot;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
