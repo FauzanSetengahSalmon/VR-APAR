@@ -32,7 +32,7 @@ public class AutoFireExtinguisher : MonoBehaviour
     [Tooltip("Geser posisi tabung APAR relatif terhadap tangan kiri (mencegah menutupi layar VR)")]
     public Vector3 handOffsetPosition = new Vector3(-0.25f, -0.72f, 0.45f);
     [Tooltip("Putar rotasi tabung APAR relatif terhadap tangan kiri")]
-    public Vector3 handOffsetRotation = new Vector3(0f, 0f, 0f);
+    public Vector3 handOffsetRotation = new Vector3(10f, 35f, 0f);
 
     [Header("Referensi Mesh 3D Selang Statis")]
     [Tooltip("GameObject Mesh 3D Selang bawaan model 3D (akan dinonaktifkan otomatis saat APAR diambil)")]
@@ -51,7 +51,7 @@ public class AutoFireExtinguisher : MonoBehaviour
     // ── Referensi internal ──────────────────────────────────────────────────
     private XRGrabInteractable grabInteractable;
     private AudioSource audioSource;
-    private bool isAttachedToHand = false;
+    [HideInInspector] public bool isAttachedToHand = false;
 
     // ── Status genggaman (di-set dari luar oleh APARHoseGrabber) ───────────
     [HideInInspector] public bool isMainHandleHeld = false;
@@ -447,6 +447,14 @@ public class AutoFireExtinguisher : MonoBehaviour
         }
 
         isMainHandleHeld = false;
+    }
+
+    public void TriggerAutoGrabBothHands()
+    {
+        if (isAttachedToHand || !isMissionStarted) return;
+
+        Debug.Log("[APAR] 🤝 Pemicu otomatis dari corong: mengambil tabung APAR dan corong sekaligus!");
+        OnGrabEnter(new SelectEnterEventArgs());
     }
 
     // ═══════════════════════════════════════════════════════════════════════

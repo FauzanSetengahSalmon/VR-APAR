@@ -277,6 +277,13 @@ public class APARHoseGrabber : MonoBehaviour
     {
         if (!isMissionStarted) return;
 
+        // Jika tabung APAR belum di-grab (belum ter-attach), otomatis pemicu grab keduanya sekaligus!
+        if (mainExtinguisher != null && !mainExtinguisher.isAttachedToHand)
+        {
+            mainExtinguisher.TriggerAutoGrabBothHands();
+            return;
+        }
+
         isHoseGrabbed = true;
         if (args.interactorObject != null)
         {
@@ -319,6 +326,15 @@ public class APARHoseGrabber : MonoBehaviour
     /// </summary>
     public void ResetToRestPosition()
     {
+        if (hoseGrabInteractable != null && hoseGrabInteractable.firstInteractorSelecting != null)
+        {
+            var manager = hoseGrabInteractable.interactionManager;
+            if (manager != null)
+            {
+                manager.SelectExit(hoseGrabInteractable.firstInteractorSelecting, hoseGrabInteractable);
+            }
+        }
+
         if (rightHandTransform != null)
         {
             VRHandAnimator handAnim = rightHandTransform.GetComponentInParent<VRHandAnimator>();
@@ -335,6 +351,11 @@ public class APARHoseGrabber : MonoBehaviour
         {
             transform.localPosition = nozzleRestLocalPos;
             transform.localRotation = nozzleRestLocalRot;
+        }
+
+        if (lr != null)
+        {
+            lr.enabled = false;
         }
     }
 

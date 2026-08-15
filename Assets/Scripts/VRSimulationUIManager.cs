@@ -789,7 +789,7 @@ public class VRSimulationUIManager : MonoBehaviour
         // ─────────────────────────────────────────────
 
         AutoFireExtinguisher apar =
-            FindObjectOfType<AutoFireExtinguisher>();
+            FindFirstObjectByType<AutoFireExtinguisher>();
 
         if (apar != null)
             apar.ResetToInitialPosition();
@@ -2009,7 +2009,7 @@ public class VRSimulationUIManager : MonoBehaviour
         victoryTimeText.fontStyle = FontStyles.Bold;
         victoryTimeText.color = Color.white;
         victoryTimeText.alignment = TextAlignmentOptions.Center;
-        victoryTimeText.enableWordWrapping = false;
+        victoryTimeText.textWrappingMode = TextWrappingModes.NoWrap;
         victoryTimeText.overflowMode = TextOverflowModes.Overflow;
         victoryTimeText.raycastTarget = false;
 
