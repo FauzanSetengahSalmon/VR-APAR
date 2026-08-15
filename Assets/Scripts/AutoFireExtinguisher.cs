@@ -38,6 +38,12 @@ public class AutoFireExtinguisher : MonoBehaviour
     [Tooltip("GameObject Mesh 3D Selang bawaan model 3D (akan dinonaktifkan otomatis saat APAR diambil)")]
     public GameObject staticMeshSelang;
 
+    [Header("Selang Pengganti")]
+    public GameObject selangPengganti;
+
+    [Header("Referensi Corong")]
+    public APARHoseGrabber hoseGrabber;
+
     [Header("Testing / Debug")]
     [Tooltip("Tekan Space di keyboard untuk toggle spray saat testing di Editor")]
     public bool debugForceSpray = false;
@@ -127,12 +133,12 @@ public class AutoFireExtinguisher : MonoBehaviour
             if (s != null) staticMeshSelang = s.gameObject;
         }
 
-        // Matikan mesh 3D Selang statis sejak awal agar tidak ada selang ganda di scene
-        if (staticMeshSelang != null && staticMeshSelang.activeSelf)
-        {
-            staticMeshSelang.SetActive(false);
-            Debug.Log("[APAR] 🙈 Mesh 3D 'Selang' statis dinonaktifkan di awal.");
-        }
+        // // Matikan mesh 3D Selang statis sejak awal agar tidak ada selang ganda di scene
+        // if (staticMeshSelang != null && staticMeshSelang.activeSelf)
+        // {
+        //     staticMeshSelang.SetActive(false);
+        //     Debug.Log("[APAR] 🙈 Mesh 3D 'Selang' statis dinonaktifkan di awal.");
+        // }
 
         if (sprayEffect == null)
         {
@@ -198,14 +204,14 @@ public class AutoFireExtinguisher : MonoBehaviour
         CheckTriggerInput();
 
         // ── 3. Evaluasi Kondisi Spray ──────────────────────────────────────
-        bool isPropSpraying  = (propStateMachine != null && propStateMachine.IsSpraying);
+        bool isPropSpraying = (propStateMachine != null && propStateMachine.IsSpraying);
         bool isKeyboardSpray = pinPulled && (Keyboard.current != null && Keyboard.current.spaceKey.isPressed);
-        bool isVRSpraying    = pinPulled && (isHoseHeld || isMainHandleHeld) && isTriggerPressedOnController;
-        bool isAnySpraying   = pinPulled && (isVRSpraying || isPropSpraying || isKeyboardSpray);
+        bool isVRSpraying = pinPulled && (isHoseHeld || isMainHandleHeld) && isTriggerPressedOnController;
+        bool isAnySpraying = pinPulled && (isVRSpraying || isPropSpraying || isKeyboardSpray);
 
-        bool shouldSpray     = isAnySpraying || debugForceSpray;
+        bool shouldSpray = isAnySpraying || debugForceSpray;
 
-        if (shouldSpray && !wasSprayingLastFrame)      StartSpray();
+        if (shouldSpray && !wasSprayingLastFrame) StartSpray();
         else if (!shouldSpray && wasSprayingLastFrame) StopSpray();
 
         wasSprayingLastFrame = shouldSpray;
@@ -407,20 +413,27 @@ public class AutoFireExtinguisher : MonoBehaviour
             if (grabInteractable != null)
                 grabInteractable.enabled = false;
 
-            // Nonaktifkan mesh 3D Selang statis bawaan model agar tidak mengganggu selang elastis
+            // Matikan selang asli
             if (staticMeshSelang != null)
             {
                 staticMeshSelang.SetActive(false);
-                Debug.Log("[APAR] 🙈 Mesh 3D 'Selang' statis dinonaktifkan!");
+            }
+
+            if (selangPengganti != null)
+            {
+                selangPengganti.SetActive(true);
             }
 
             Debug.Log($"[APAR] 🤚 Tabung OTOMATIS ter-attach ke Tangan KIRI ('{leftHandTransform.name}').");
 
-            // 🌟 OTOMATIS AKTIFKAN TANGAN KANAN UNTUK MEMEGANG CORONG
-            APARHoseGrabber hoseGrabber = GetComponentInChildren<APARHoseGrabber>();
             if (hoseGrabber != null)
             {
                 hoseGrabber.AutoGrabRightHand();
+                Debug.Log("[APAR] 🔫 Memerintahkan Corong untuk auto-grab ke tangan kanan.");
+            }
+            else
+            {
+                Debug.LogWarning("[APAR] ⚠ APARHoseGrabber belum diisi di Inspector!");
             }
         }
     }
@@ -490,10 +503,6 @@ public class AutoFireExtinguisher : MonoBehaviour
         Debug.Log("[APAR] 🚫 Spray MATI.");
     }
 
-    /// <summary>
-    /// Kembalikan APAR ke posisi & rotasi semula tempat diletakkan di awal,
-    /// serta lepas dari genggaman tangan player.
-    /// </summary>
     public void ResetToInitialPosition()
     {
         StopSpray();
@@ -528,8 +537,10 @@ public class AutoFireExtinguisher : MonoBehaviour
         if (staticMeshSelang != null)
             staticMeshSelang.SetActive(true);
 
-        // Reset corong & selang ke bodi tabung
-        APARHoseGrabber hoseGrabber = GetComponentInChildren<APARHoseGrabber>();
+        if (selangPengganti != null)
+        {
+            selangPengganti.SetActive(false);
+        }
         if (hoseGrabber != null)
         {
             hoseGrabber.ResetToRestPosition();

@@ -1,29 +1,41 @@
 using UnityEngine;
 
 [RequireComponent(typeof(LineRenderer))]
-public class SketchBetweenPoint : MonoBehaviour
+public class StretchBetweenPoint : MonoBehaviour
 {
-    [Header("Points")]
+    [Header("Titik Selang")]
     public Transform pointA;
     public Transform pointB;
 
-    [Header("Curve Direction")]
-    public Transform curveDirection;
-
-    [Range(4, 50)]
+    [Header("Bentuk Selang")]
+    [Range(2, 50)]
     public int segments = 20;
 
-    public float curveAmount = 0.3f;
+    [Tooltip("Semakin besar, semakin melengkung ke bawah.")]
+    public float sagAmount = 0.25f;
+
+    [Tooltip("Arah lengkungan. Biasanya Vector3.down.")]
+    public Vector3 sagDirection = Vector3.down;
+
+    [Header("Ketebalan")]
+    public float startWidth = 0.025f;
+    public float endWidth = 0.025f;
 
     private LineRenderer line;
 
     void Awake()
     {
         line = GetComponent<LineRenderer>();
+
+        line.useWorldSpace = true;
+
         line.positionCount = segments;
+
+        line.startWidth = startWidth;
+        line.endWidth = endWidth;
     }
 
-    void Update()
+    void LateUpdate()
     {
         if (pointA == null || pointB == null)
             return;
@@ -36,40 +48,20 @@ public class SketchBetweenPoint : MonoBehaviour
         Vector3 start = pointA.position;
         Vector3 end = pointB.position;
 
-        Vector3 direction = end - start;
-
-        if (direction.sqrMagnitude < 0.0001f)
-            return;
-
-        direction.Normalize();
-
-        Vector3 curveDir;
-
-        if (curveDirection != null)
-        {
-            curveDir = Vector3.ProjectOnPlane(
-                -curveDirection.up,
-                direction
-            ).normalized;
-        }
-        else
-        {
-            curveDir = Vector3.down;
-        }
+        Vector3 direction = sagDirection.normalized;
 
         for (int i = 0; i < segments; i++)
         {
-            float t = i / (float)(segments - 1);
+            float t = (float)i / (segments - 1);
 
-            Vector3 position = Vector3.Lerp(
-                start,
-                end,
-                t
-            );
+            // Posisi lurus antara A dan B
+            Vector3 position = Vector3.Lerp(start, end, t);
 
-            float curve = Mathf.Sin(t * Mathf.PI) * curveAmount;
+            // Lengkungan berbentuk parabola.
+            // Nilai 0 di ujung dan maksimal di tengah.
+            float curve = 4f * t * (1f - t);
 
-            position += curveDir * curve;
+            position += direction * (curve * sagAmount);
 
             line.SetPosition(i, position);
         }

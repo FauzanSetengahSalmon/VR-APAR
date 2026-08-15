@@ -9,6 +9,9 @@ public class APARHoseGrabber : MonoBehaviour
     [Tooltip("Script AutoFireExtinguisher pada root APAR Full")]
     public AutoFireExtinguisher mainExtinguisher;
 
+    [Header("Referensi Tangan Kanan")]
+    public Transform rightHandTransformManual;
+
     [Tooltip("Transform pangkal selang di bodi tabung. Diisi otomatis jika kosong.")]
     public Transform hoseBodyOutlet;
 
@@ -28,7 +31,7 @@ public class APARHoseGrabber : MonoBehaviour
     public Vector3 nozzleHoldRotOffset = new Vector3(0f, 180f, 0f);
 
     [Tooltip("Offset lokal titik sambungan selang di belakang corong (pangkal belakang corong)")]
-     public Vector3 hoseNozzleConnectOffset = new Vector3(0f, 0f, 0.030f);
+    public Vector3 hoseNozzleConnectOffset = new Vector3(0f, 0f, 0.030f);
 
     // ── Private State ───────────────────────────────────────────────────────
     private XRGrabInteractable hoseGrabInteractable;
@@ -56,9 +59,9 @@ public class APARHoseGrabber : MonoBehaviour
         if (hoseGrabInteractable == null)
             hoseGrabInteractable = gameObject.AddComponent<XRGrabInteractable>();
 
-        hoseGrabInteractable.movementType      = XRBaseInteractable.MovementType.Instantaneous;
-        hoseGrabInteractable.trackPosition     = false;
-        hoseGrabInteractable.trackRotation     = false;
+        hoseGrabInteractable.movementType = XRBaseInteractable.MovementType.Instantaneous;
+        hoseGrabInteractable.trackPosition = false;
+        hoseGrabInteractable.trackRotation = false;
 
         // --- Rigidbody kinematic ─────────────────────────────────────────────
         Rigidbody rb = GetComponent<Rigidbody>();
@@ -88,16 +91,16 @@ public class APARHoseGrabber : MonoBehaviour
     // ═══════════════════════════════════════════════════════════════════════
     //  AUTO-ATTACH RIGHT HAND
     // ═══════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Dipanggil otomatis saat Tabung APAR di-grab Tangan Kiri.
-    /// Mencari Tangan Kanan di scene dan langsung meng-attach Corong ke Tangan Kanan.
-    /// </summary>
     public void AutoGrabRightHand()
     {
-        if (rightHandTransform != null && isHoseGrabbed) return;
+        if (rightHandTransform != null && isHoseGrabbed)
+            return;
 
-        Transform foundRightHand = FindRightHandTransform();
+        Transform foundRightHand = rightHandTransformManual;
+
+        if (foundRightHand == null)
+            foundRightHand = FindRightHandTransform();
+
         if (foundRightHand != null)
         {
             rightHandTransform = foundRightHand;
@@ -106,25 +109,27 @@ public class APARHoseGrabber : MonoBehaviour
             if (mainExtinguisher != null)
                 mainExtinguisher.isHoseHeld = true;
 
-            VRHandAnimator handAnim = foundRightHand.GetComponentInParent<VRHandAnimator>();
-            if (handAnim != null) handAnim.SetForceGrip(true);
+            VRHandAnimator handAnim =
+                foundRightHand.GetComponentInParent<VRHandAnimator>();
 
-            // Sembunyikan mesh 3D Selang statis agar tidak mengganggu selang elastis
-            if (mainExtinguisher != null && mainExtinguisher.staticMeshSelang != null)
+            if (handAnim != null)
+                handAnim.SetForceGrip(true);
+
+            if (mainExtinguisher != null &&
+                mainExtinguisher.staticMeshSelang != null)
             {
                 mainExtinguisher.staticMeshSelang.SetActive(false);
             }
-            else if (transform.parent != null)
-            {
-                Transform s = transform.parent.Find("Selang");
-                if (s != null) s.gameObject.SetActive(false);
-            }
 
-            Debug.Log($"[APARHoseGrabber] 🤝 Corong OTOMATIS ter-attach ke Tangan Kanan ('{foundRightHand.name}')!");
+            Debug.Log(
+                $"[APARHoseGrabber] 🤝 Corong otomatis mengikuti tangan kanan: {foundRightHand.name}"
+            );
         }
         else
         {
-            Debug.LogWarning("[APARHoseGrabber] ⚠️ Tangan Kanan belum ditemukan di scene. Corong dapat di-grab secara manual.");
+            Debug.LogError(
+                "[APARHoseGrabber] ❌ Tangan kanan tidak ditemukan!"
+            );
         }
     }
 
@@ -229,10 +234,10 @@ public class APARHoseGrabber : MonoBehaviour
         lr = GetComponent<LineRenderer>();
         if (lr == null) lr = gameObject.AddComponent<LineRenderer>();
 
-        lr.positionCount  = HOSE_SEGMENTS;
-        lr.startWidth     = hoseThickness;
-        lr.endWidth       = hoseThickness * 0.80f;
-        lr.useWorldSpace  = true;
+        lr.positionCount = HOSE_SEGMENTS;
+        lr.startWidth = hoseThickness;
+        lr.endWidth = hoseThickness * 0.80f;
+        lr.useWorldSpace = true;
         lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         lr.receiveShadows = false;
         lr.numCapVertices = 4;
@@ -241,7 +246,7 @@ public class APARHoseGrabber : MonoBehaviour
         hoseMat.color = new Color(0.10f, 0.10f, 0.12f, 1f);
         lr.material = hoseMat;
 
-        lr.enabled = true;
+        lr.enabled = false;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -255,7 +260,7 @@ public class APARHoseGrabber : MonoBehaviour
             hoseGrabInteractable.selectEntered.AddListener(OnHoseGrabbed);
             hoseGrabInteractable.selectExited.AddListener(OnHoseReleased);
         }
-        if (lr != null) lr.enabled = true;
+        if (lr != null) lr.enabled = false;
     }
 
     private void OnDisable()
@@ -283,8 +288,6 @@ public class APARHoseGrabber : MonoBehaviour
 
         if (mainExtinguisher != null)
             mainExtinguisher.isHoseHeld = true;
-
-        if (lr != null) lr.enabled = true;
     }
 
     private void OnHoseReleased(SelectExitEventArgs args)
@@ -393,7 +396,7 @@ public class APARHoseGrabber : MonoBehaviour
         float sag = hoseSagAmount * Mathf.Clamp01(dist / 0.6f);
 
         Vector3 p1 = p0 + outDir * handle + Vector3.down * sag * 0.45f;
-        Vector3 p2 = p3 + inDir  * handle + Vector3.down * sag * 0.65f;
+        Vector3 p2 = p3 + inDir * handle + Vector3.down * sag * 0.65f;
 
         for (int i = 0; i < HOSE_SEGMENTS; i++)
         {
@@ -404,12 +407,12 @@ public class APARHoseGrabber : MonoBehaviour
 
     private static Vector3 CubicBezier(float t, Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3)
     {
-        float u   = 1f - t;
-        float tt  = t * t;
-        float uu  = u * u;
+        float u = 1f - t;
+        float tt = t * t;
+        float uu = u * u;
         return (uu * u) * p0
              + (3f * uu * t) * p1
              + (3f * u * tt) * p2
-             + (tt * t)      * p3;
+             + (tt * t) * p3;
     }
 }

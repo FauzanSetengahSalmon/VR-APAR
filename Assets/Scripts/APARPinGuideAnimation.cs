@@ -22,7 +22,7 @@ public class APARPinGuideAnimation : MonoBehaviour
     public Sprite controllerRealSprite;
 
     [Header("Pengaturan UI VR")]
-    public float uiHeightAbovePin = 0.35f;
+    public float uiHeightAbovePin = 0.65f;
     public float uiScale = 0.001f;
 
     // Private Cache
@@ -41,6 +41,9 @@ public class APARPinGuideAnimation : MonoBehaviour
 
     private void Start()
     {
+        // Pastikan posisi UI cukup tinggi melayang di atas APAR
+        if (uiHeightAbovePin < 0.65f) uiHeightAbovePin = 0.65f;
+
         // Auto-find components
         if (mainExtinguisher == null) mainExtinguisher = GetComponentInParent<AutoFireExtinguisher>();
         if (grabInteractable == null) grabInteractable = GetComponentInParent<XRGrabInteractable>();

@@ -13,7 +13,7 @@ public class APARPinIndicator : MonoBehaviour
 
     [Header("Posisi & Ukuran Indikator")]
     [Tooltip("Ketinggian indikator di atas pin (meter)")]
-    public float heightAbovePin = 0.25f;
+    public float heightAbovePin = 0.150f;
 
     [Tooltip("Skala dunia untuk canvas (0.001 = kecil, 0.003 = besar)")]
     public float worldScale = 0.002f;
