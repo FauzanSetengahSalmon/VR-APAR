@@ -3378,11 +3378,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SketchBetweenPoint
   pointA: {fileID: 1622113370}
   pointB: {fileID: 248386566}
+  apar: {fileID: 0}
   segments: 30
   sagAmount: 0.08
-  sagDirection: {x: 0, y: -1, z: 0}
-  startWidth: 0.03
-  endWidth: 0.03
+  hoseWidth: 0.025
 --- !u!1 &1206302367
 GameObject:
   m_ObjectHideFlags: 0
@@ -3616,14 +3615,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 410239926b1951948a95f30ef71461ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KitchenLightFlicker
-  baseIntensity: 2.8
-  flickerChance: 0.008
-  flickerDuration: 0.05
-  allowDoubleFlicker: 1
-  lightComp: {fileID: 0}
-  isFlickering: 0
-  flickerEndTime: 0
-  flickerCount: 0
 --- !u!108 &1262192812
 Light:
   m_ObjectHideFlags: 0
@@ -5738,7 +5729,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 558754999117480544}
-  m_Mesh: {fileID: 5512361600001258384, guid: e9ee25819b265df49a39d65ed522b3f0, type: 3}
+  m_Mesh: {fileID: 5512361600001258384, guid: 28d66b4c73bfc2a4fab4b3b055fd9f2d, type: 3}
 --- !u!4 &3696997343183828087
 Transform:
   m_ObjectHideFlags: 0
@@ -5819,11 +5810,12 @@ MonoBehaviour:
   extinguishRange: 5
   pinPulled: 1
   handOffsetPosition: {x: 0.2, y: -0.45, z: 0.4}
-  handOffsetRotation: {x: 0, y: 90, z: 0}
+  handOffsetRotation: {x: 0, y: -36.8, z: 0}
   staticMeshSelang: {fileID: 2153256}
   selangPengganti: {fileID: 1204160819}
   hoseGrabber: {fileID: 7920620841569432452}
   debugForceSpray: 0
+  isAttachedToHand: 0
   isMainHandleHeld: 0
   isHoseHeld: 0
   nozzleTransform: {fileID: 0}
@@ -6165,7 +6157,7 @@ Transform:
   m_GameObject: {fileID: 558754999117480544}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071067}
-  m_LocalPosition: {x: -11.493, y: 0.953, z: -6.095}
+  m_LocalPosition: {x: -11.4914, y: 0.9297, z: -6.095}
   m_LocalScale: {x: 2.0693262, y: 2.0693257, z: 2.0693257}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -6214,13 +6206,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::APARHoseGrabber
   mainExtinguisher: {fileID: 4036790780004183759}
   rightHandTransformManual: {fileID: 668866090}
-  hoseBodyOutlet: {fileID: 0}
-  hoseThickness: 0.025
-  hoseSagAmount: 0.22
   followSmoothSpeed: 25
   nozzleHoldOffset: {x: 0.05, y: -0.15, z: 0.35}
   nozzleHoldRotOffset: {x: 0, y: 180, z: 0}
-  hoseNozzleConnectOffset: {x: 0, y: 0, z: 0.03}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
