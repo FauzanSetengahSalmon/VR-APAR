@@ -91,11 +91,22 @@ public class VRSimulationUIManager : MonoBehaviour
     private TextMeshProUGUI muteIconText;      // fallback teks ikon mute
     private TextMeshProUGUI endIconText;       // fallback teks ikon end
 
+    [Header("UI Skor Bintang & Threshold Waktu (detik)")]
+    [Tooltip("Gambar UI Skor Bintang 1 (waktu lambat)")]
+    public Sprite uiSkorBintang1;
+    [Tooltip("Gambar UI Skor Bintang 2 (waktu sedang)")]
+    public Sprite uiSkorBintang2;
+    [Tooltip("Gambar UI Skor Bintang 3 (waktu cepat)")]
+    public Sprite uiSkorBintang3;
+
+    [Tooltip("Batas waktu MAKSIMAL (detik) untuk dapat BINTANG 3 (Contoh: <= 30 detik)")]
+    public float maxTimeFor3Stars = 30f;
+    [Tooltip("Batas waktu MAKSIMAL (detik) untuk dapat BINTANG 2 (Contoh: <= 60 detik). Lebih dari waktu ini akan dapat Bintang 1.")]
+    public float maxTimeFor2Stars = 60f;
+
     // ── Elements Victory ──
+    private Image victoryBgImage;        // Image fullscreen UI skor bintang
     private TextMeshProUGUI victoryTimeText;
-    private TextMeshProUGUI victoryGradeBadgeText;
-    private TextMeshProUGUI victoryTitleText;
-    private TextMeshProUGUI victoryDescriptionText;
 
     // ── Circle Sprite Cache ──
     private Sprite circleSprite;
@@ -362,6 +373,10 @@ public class VRSimulationUIManager : MonoBehaviour
     private IEnumerator LoadingRoutine()
     {
         SetPhase(UIPhase.Loading);
+
+        if (loadingPanel != null)
+            StartCoroutine(AnimatePopUpScale(loadingPanel.transform));
+
         float duration = 2.5f;
         float elapsed = 0f;
 
@@ -370,15 +385,21 @@ public class VRSimulationUIManager : MonoBehaviour
             elapsed += Time.deltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
 
-            if (loadingProgressBar != null) loadingProgressBar.fillAmount = progress;
+            if (loadingProgressBar != null)
+            {
+                loadingProgressBar.fillAmount = progress;
+                // Efek pulse warna pada progress bar
+                float pulse = (Mathf.Sin(Time.time * 6f) + 1f) * 0.5f;
+                loadingProgressBar.color = Color.Lerp(new Color(0f, 0.85f, 1f), new Color(0.2f, 1f, 0.7f), pulse);
+            }
             if (loadingPercentText != null) loadingPercentText.text = $"{Mathf.RoundToInt(progress * 100)}%";
 
             if (progress < 0.35f)
-                loadingStatusText.text = "Menginisialisasi Sistem Sensor APAR...";
+                loadingStatusText.text = "Menginisialisasi Sistem APAR...";
             else if (progress < 0.75f)
-                loadingStatusText.text = "Menyiapkan Skenario Kebakaran Dapur...";
+                loadingStatusText.text = "Menyiapkan Skenario Misi...";
             else
-                loadingStatusText.text = "Menghubungkan ke Saluran Darurat...";
+                loadingStatusText.text = "Menghubungkan Saluran Darurat...";
 
             yield return null;
         }
@@ -545,55 +566,45 @@ private IEnumerator EmergencyCall113Routine()
         if (uiAudioSource != null && victoryFanfareClip != null)
             uiAudioSource.PlayOneShot(victoryFanfareClip);
 
+        // ── Format waktu sebagai MM:SS (sesuai UI bintang: 00:00)
         int minutes = Mathf.FloorToInt(totalTime / 60f);
-        float seconds = totalTime % 60f;
-        string timeStr = $"{minutes:00}:{seconds:05.1}s";
+        int seconds = Mathf.FloorToInt(totalTime % 60f);
+        string timeStr = $"{minutes:00}:{seconds:00}";
         if (victoryTimeText != null)
-            victoryTimeText.text = $"Waktu Pemadaman: <b>{timeStr}</b>";
+            victoryTimeText.text = timeStr;
 
-        string grade; Color gradeColor; string titleDesc; string detailDesc;
-
-        if (totalTime < 20f)
-        {
-            grade = "S"; gradeColor = new Color(1f, 0.84f, 0f);
-            titleDesc = "LUAR BIASA!";
-            detailDesc = "Eksekusi pemadaman api sangat cepat & presisi! Api diatasi sepenuhnya.";
-        }
-        else if (totalTime < 35f)
-        {
-            grade = "A"; gradeColor = new Color(0.2f, 1f, 0.55f);
-            titleDesc = "SANGAT BAIK!";
-            detailDesc = "Respon tanggap & efektif. APAR digunakan dengan tepat pada pangkal api.";
-        }
-        else if (totalTime < 50f)
-        {
-            grade = "B"; gradeColor = new Color(0.15f, 0.85f, 1f);
-            titleDesc = "BAIK!";
-            detailDesc = "Api berhasil dipadamkan. Coba lebih cepat dalam mencabut pin & mengarahkan selang.";
-        }
-        else if (totalTime < 70f)
-        {
-            grade = "C"; gradeColor = new Color(1f, 0.62f, 0.1f);
-            titleDesc = "CUKUP";
-            detailDesc = "Waktu pemadaman agak lambat. Semprot langsung ke pangkal api secara konstan.";
-        }
+        // ── Pilih sprite UI bintang berdasarkan threshold waktu yang diatur di Inspector
+        Sprite chosenSprite;
+        if (totalTime <= maxTimeFor3Stars)
+            chosenSprite = uiSkorBintang3;   // Bintang 3: Cepat (<= maxTimeFor3Stars)
+        else if (totalTime <= maxTimeFor2Stars)
+            chosenSprite = uiSkorBintang2;   // Bintang 2: Sedang (<= maxTimeFor2Stars)
         else
-        {
-            grade = "F"; gradeColor = new Color(1f, 0.25f, 0.25f);
-            titleDesc = "PERLU EVALUASI";
-            detailDesc = "Pemadaman sangat lambat. Dalam situasi nyata ini sangat berbahaya.";
-        }
+            chosenSprite = uiSkorBintang1;   // Bintang 1: Lambat (> maxTimeFor2Stars)
 
-        if (victoryGradeBadgeText != null) { victoryGradeBadgeText.text = grade; victoryGradeBadgeText.color = gradeColor; }
-        if (victoryTitleText != null) { victoryTitleText.text = titleDesc; victoryTitleText.color = gradeColor; }
-        if (victoryDescriptionText != null) victoryDescriptionText.text = detailDesc;
+        if (victoryBgImage != null && chosenSprite != null)
+            victoryBgImage.sprite = chosenSprite;
+
+        // ── Reset APAR ke posisi semula & lepas dari genggaman tangan
+        AutoFireExtinguisher apar = FindObjectOfType<AutoFireExtinguisher>();
+        if (apar != null)
+        {
+            apar.ResetToInitialPosition();
+        }
 
         if (victoryPanel != null) StartCoroutine(AnimatePopUpScale(victoryPanel.transform));
     }
 
+    /// <summary>Restart simulasi (muat ulang scene saat ini).</summary>
     public void RestartSimulation()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    /// <summary>Kembali ke Lobby (scene index 0).</summary>
+    public void GoToLobby()
+    {
+        SceneManager.LoadScene(0);
     }
 
     private void SetPhase(UIPhase newPhase)
@@ -956,56 +967,76 @@ private IEnumerator EmergencyCall113Routine()
             new Color(0.5f, 0.5f, 0.6f, 0.5f), new Vector2(0f, -353f));
     }
 
-    // ─── Victory Grade Box ───
+    // ─── Victory Panel — menggunakan sprite UI Skor Bintang dari Assets/UIUX ───
     private void BuildVictoryPanel()
     {
-        victoryPanel = CreateRoundedPanel(mainCanvas.gameObject, "VictoryPanel",
-            new Vector2(728f, 546f), new Color(0.04f, 0.06f, 0.10f, 0.97f), Vector2.zero);
+        // Container: fullscreen di canvas
+        victoryPanel = new GameObject("VictoryPanel");
+        victoryPanel.transform.SetParent(mainCanvas.transform, false);
+        RectTransform vpRT = victoryPanel.AddComponent<RectTransform>();
+        vpRT.anchorMin = Vector2.zero;
+        vpRT.anchorMax = Vector2.one;
+        vpRT.sizeDelta = Vector2.zero;
+        vpRT.anchoredPosition = Vector2.zero;
 
-        // Top accent line
-        CreateRoundedPanel(victoryPanel, "AccentLine", new Vector2(117f, 5f),
-            new Color(1f, 0.84f, 0f, 0.8f), new Vector2(0f, 241f));
+        // ── Background Image: sprite UI Bintang (diganti runtime saat misi selesai) ──
+        GameObject bgGO = new GameObject("VictoryBgImage");
+        bgGO.transform.SetParent(victoryPanel.transform, false);
+        victoryBgImage = bgGO.AddComponent<Image>();
+        victoryBgImage.sprite = uiSkorBintang1; // default, akan diganti saat misi selesai
+        victoryBgImage.preserveAspect = true;
+        victoryBgImage.type = Image.Type.Simple;
+        RectTransform bgRT = bgGO.GetComponent<RectTransform>();
+        bgRT.anchorMin = new Vector2(0.5f, 0.5f);
+        bgRT.anchorMax = new Vector2(0.5f, 0.5f);
+        bgRT.pivot = new Vector2(0.5f, 0.5f);
+        bgRT.anchoredPosition = Vector2.zero;
+        // Ukuran menyesuaikan aspect ratio 512x726 (dari desain UI)
+        bgRT.sizeDelta = new Vector2(530f, 750f);
 
-        victoryTitleText = CreateText(victoryPanel, "VicTitle", "SIMULASI SELESAI!", 36,
-            FontStyles.Bold, new Vector2(0f, 206f), Color.yellow);
-        victoryTimeText = CreateText(victoryPanel, "VicTime", "Waktu Pemadaman: 00:00.0s", 23,
-            FontStyles.Normal, new Vector2(0f, 154f), new Color(0.85f, 0.9f, 1f));
+        // ── Patch Mask untuk Menutupi Teks "00:00" Statis Bawaan Gambar UI ──
+        GameObject patchGO = new GameObject("TimerPatchMask");
+        patchGO.transform.SetParent(bgGO.transform, false);
+        Image patchImg = patchGO.AddComponent<Image>();
+        // Warna dark charcoal slate persis dengan background kotak pada desain UI
+        patchImg.color = new Color(0.11f, 0.12f, 0.16f, 1f);
+        RectTransform patchRT = patchGO.GetComponent<RectTransform>();
+        patchRT.anchorMin = new Vector2(0.5f, 0.5f);
+        patchRT.anchorMax = new Vector2(0.5f, 0.5f);
+        patchRT.pivot = new Vector2(0.5f, 0.5f);
+        patchRT.anchoredPosition = new Vector2(0f, 78f);
+        patchRT.sizeDelta = new Vector2(250f, 70f); // Menutupi area 00:00 statis bawaan gambar secara sempurna
 
-        // Grade circle
-        GameObject gradeCircle = CreateCircleImageGO(victoryPanel, "GradeCircle", 143f,
-            new Color(0.08f, 0.10f, 0.18f, 1f));
-        gradeCircle.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 29f);
+        // ── Text Timer Dinamis — ditampilkan bersih di atas patch ──
+        GameObject timerGO = new GameObject("VictoryTimeText");
+        timerGO.transform.SetParent(patchGO.transform, false);
+        victoryTimeText = timerGO.AddComponent<TextMeshProUGUI>();
+        victoryTimeText.text = "00:00";
+        victoryTimeText.fontSize = 62;
+        victoryTimeText.fontStyle = FontStyles.Bold;
+        victoryTimeText.color = Color.white;
+        victoryTimeText.alignment = TextAlignmentOptions.Center;
+        RectTransform timerRT = timerGO.GetComponent<RectTransform>();
+        timerRT.anchorMin = Vector2.zero;
+        timerRT.anchorMax = Vector2.one;
+        timerRT.pivot = new Vector2(0.5f, 0.5f);
+        timerRT.anchoredPosition = Vector2.zero;
+        timerRT.sizeDelta = Vector2.zero;
 
-        // Grade border ring
-        GameObject gradeBorderRing = CreateCircleImageGO(victoryPanel, "GradeBorder", 154f,
-            new Color(1f, 0.84f, 0f, 0.3f));
-        gradeBorderRing.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 29f);
-
-        victoryGradeBadgeText = CreateText(gradeCircle, "GradeBadge", "S", 88, FontStyles.Bold,
-            new Vector2(0f, 5f), new Color(1f, 0.84f, 0f));
-
-        victoryDescriptionText = CreateText(victoryPanel, "VicDesc", "Deskripsi hasil...", 17,
-            FontStyles.Italic, new Vector2(0f, -101f), new Color(0.82f, 0.88f, 1f));
-        victoryDescriptionText.GetComponent<RectTransform>().sizeDelta = new Vector2(663f, 78f);
-
-        // Restart button (circle-rounded)
-        GameObject restartGO = new GameObject("RestartBtn");
-        restartGO.transform.SetParent(victoryPanel.transform, false);
-        RectTransform restartRT = restartGO.AddComponent<RectTransform>();
-        restartRT.anchorMin = new Vector2(0.5f, 0.5f);
-        restartRT.anchorMax = new Vector2(0.5f, 0.5f);
-        restartRT.pivot = new Vector2(0.5f, 0.5f);
-        restartRT.anchoredPosition = new Vector2(0f, -193f);
-        restartRT.sizeDelta = new Vector2(286f, 60f);
-
-        Image restartImg = restartGO.AddComponent<Image>();
-        restartImg.color = new Color(0.1f, 0.6f, 0.3f, 1f);
-
-        Button restartBtn = restartGO.AddComponent<Button>();
-        restartBtn.onClick.AddListener(RestartSimulation);
-
-        CreateText(restartGO, "RestartLabel", "ULANGI SIMULASI", 20, FontStyles.Bold,
-            Vector2.zero, Color.white);
+        // ── Tombol Kembali ke Lobby — overlay di area bawah UI ──
+        GameObject lobbyBtnGO = new GameObject("LobbyBtn");
+        lobbyBtnGO.transform.SetParent(bgGO.transform, false);
+        Image lobbyBtnImg = lobbyBtnGO.AddComponent<Image>();
+        lobbyBtnImg.color = new Color(1f, 1f, 1f, 0f); // Transparan — agar tidak menutupi desain
+        Button lobbyBtn = lobbyBtnGO.AddComponent<Button>();
+        lobbyBtn.onClick.AddListener(GoToLobby);
+        // Tap area di posisi tombol "KEMBALI KE LOBBY" di desain (bawah UI)
+        RectTransform lobbyRT = lobbyBtnGO.GetComponent<RectTransform>();
+        lobbyRT.anchorMin = new Vector2(0.5f, 0.5f);
+        lobbyRT.anchorMax = new Vector2(0.5f, 0.5f);
+        lobbyRT.pivot = new Vector2(0.5f, 0.5f);
+        lobbyRT.anchoredPosition = new Vector2(0f, -310f); // posisi bawah layar desain
+        lobbyRT.sizeDelta = new Vector2(400f, 80f);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -30,9 +30,9 @@ public class AutoFireExtinguisher : MonoBehaviour
 
     [Header("Offset Pegangan Tangan Kiri (Tabung)")]
     [Tooltip("Geser posisi tabung APAR relatif terhadap tangan kiri (mencegah menutupi layar VR)")]
-    public Vector3 handOffsetPosition = new Vector3(-0.1f, -0.45f, 0.25f);
+    public Vector3 handOffsetPosition = new Vector3(-0.25f, -0.72f, 0.45f);
     [Tooltip("Putar rotasi tabung APAR relatif terhadap tangan kiri")]
-    public Vector3 handOffsetRotation = new Vector3(15f, -15f, 0f);
+    public Vector3 handOffsetRotation = new Vector3(0f, 0f, 0f);
 
     [Header("Referensi Mesh 3D Selang Statis")]
     [Tooltip("GameObject Mesh 3D Selang bawaan model 3D (akan dinonaktifkan otomatis saat APAR diambil)")]
@@ -175,6 +175,13 @@ public class AutoFireExtinguisher : MonoBehaviour
 
     private void Update()
     {
+        // Live sync offset posisi & rotasi tabung saat attached ke tangan
+        if (isAttachedToHand && transform.parent != null)
+        {
+            transform.localPosition = handOffsetPosition;
+            transform.localRotation = Quaternion.Euler(handOffsetRotation);
+        }
+
         // ── 1. Cek Input Tombol X dan Y (Cabut PIN) ────────────────────────
         CheckPinPullInput();
 
@@ -323,6 +330,34 @@ public class AutoFireExtinguisher : MonoBehaviour
     //  GRAB EVENTS — Tabung APAR → Tangan KIRI
     // ═══════════════════════════════════════════════════════════════════════
 
+    private Transform FindLeftHandTransform()
+    {
+        // 1. Cari berdasarkan GameObject name Tangan Kiri
+        string[] searchNames = {
+            "LeftHand Controller", "Left Controller", "LeftHandDirectInteractor",
+            "LeftHand", "Left Interaction Follower", "LeftHand Index-Tip"
+        };
+
+        foreach (string n in searchNames)
+        {
+            GameObject go = GameObject.Find(n);
+            if (go != null) return go.transform;
+        }
+
+        // 2. Cari berdasarkan XRBaseInteractor dengan tag/nama 'Left'
+        var interactors = FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor>(FindObjectsSortMode.None);
+        foreach (var interactor in interactors)
+        {
+            string name = interactor.gameObject.name.ToLower();
+            if (name.Contains("left") && !name.Contains("ui"))
+            {
+                return interactor.transform;
+            }
+        }
+
+        return null;
+    }
+
     private void OnGrabEnter(SelectEnterEventArgs args)
     {
         if (!isMissionStarted)
@@ -333,18 +368,22 @@ public class AutoFireExtinguisher : MonoBehaviour
 
         isMainHandleHeld = true;
 
-        if (args.interactorObject != null)
+        // Cari Tangan Kiri di scene (selalu pastikan Tabung dipegang Tangan Kiri)
+        Transform leftHandTransform = FindLeftHandTransform();
+        if (leftHandTransform == null && args.interactorObject != null)
+            leftHandTransform = args.interactorObject.transform;
+
+        if (leftHandTransform != null)
         {
-            VRHandAnimator handAnim = args.interactorObject.transform.GetComponentInParent<VRHandAnimator>();
+            VRHandAnimator handAnim = leftHandTransform.GetComponentInParent<VRHandAnimator>();
             if (handAnim != null) handAnim.SetForceGrip(true);
         }
 
         // Attach tabung APAR ke Tangan KIRI dengan offset yang rapi (tidak menutupi muka)
-        if (!isAttachedToHand && args.interactorObject != null)
+        if (!isAttachedToHand && leftHandTransform != null)
         {
             isAttachedToHand = true;
 
-            Transform leftHandTransform = args.interactorObject.transform;
             transform.SetParent(leftHandTransform);
             transform.localPosition = handOffsetPosition;
             transform.localRotation = Quaternion.Euler(handOffsetRotation);
@@ -366,7 +405,7 @@ public class AutoFireExtinguisher : MonoBehaviour
                 Debug.Log("[APAR] 🙈 Mesh 3D 'Selang' statis dinonaktifkan!");
             }
 
-            Debug.Log("[APAR] 🤚 Tabung ter-attach ke Tangan KIRI.");
+            Debug.Log($"[APAR] 🤚 Tabung OTOMATIS ter-attach ke Tangan KIRI ('{leftHandTransform.name}').");
 
             // 🌟 OTOMATIS AKTIFKAN TANGAN KANAN UNTUK MEMEGANG CORONG
             APARHoseGrabber hoseGrabber = GetComponentInChildren<APARHoseGrabber>();
@@ -399,12 +438,15 @@ public class AutoFireExtinguisher : MonoBehaviour
 
         Debug.DrawRay(nozzle.position, nozzle.forward * extinguishRange, Color.cyan);
 
-        RaycastHit[] hits = Physics.SphereCastAll(nozzle.position, 0.4f, nozzle.forward, extinguishRange);
+        // SphereCast untuk memadamkan target api
+        RaycastHit[] hits = Physics.SphereCastAll(nozzle.position, 0.45f, nozzle.forward, extinguishRange);
         foreach (RaycastHit hit in hits)
         {
             FireExtinguisherTarget target = hit.collider.GetComponentInParent<FireExtinguisherTarget>();
             if (target != null)
+            {
                 target.ExtinguishGradually(Time.deltaTime);
+            }
         }
     }
 

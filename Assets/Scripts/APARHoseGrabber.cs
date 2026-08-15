@@ -33,7 +33,7 @@ public class APARHoseGrabber : MonoBehaviour
     public float followSmoothSpeed = 25f;
 
     [Tooltip("Offset posisi lokal corong saat digenggam tangan kanan")]
-    public Vector3 nozzleHoldOffset = new Vector3(0.02f, -0.05f, 0.15f);
+    public Vector3 nozzleHoldOffset = new Vector3(0.05f, -0.15f, 0.35f);
     [Tooltip("Offset rotasi lokal corong saat digenggam tangan kanan (putar 180 jika kebalik)")]
     public Vector3 nozzleHoldRotOffset = new Vector3(0f, 180f, 0f);
 
@@ -49,7 +49,7 @@ public class APARHoseGrabber : MonoBehaviour
     private Vector3 nozzleRestLocalPos;
     private Quaternion nozzleRestLocalRot;
 
-    private const int HOSE_SEGMENTS = 28;   // Lebih banyak → lebih mulus
+    private const int HOSE_SEGMENTS = 50;   // Lebih banyak → lebih mulus
     private Transform smokeTransform;        // Cache Smoke child
 
     // ── Mission Lock ─────────────────────────────────────────────────────────
@@ -210,11 +210,11 @@ public class APARHoseGrabber : MonoBehaviour
                     mainExtinguisher.sprayEffect = ps;
 
                 Debug.Log($"[APARHoseGrabber] 💨 Smoke '{ps.gameObject.name}' ditemukan di Corong.");
-                return;
+                break;
             }
         }
 
-        if (list.Length > 0)
+        if (smokeTransform == null && list.Length > 0)
         {
             smokeTransform = list[0].transform;
             if (mainExtinguisher != null && mainExtinguisher.sprayEffect == null)
@@ -224,6 +224,13 @@ public class APARHoseGrabber : MonoBehaviour
         if (smokeTransform == null && mainExtinguisher != null && mainExtinguisher.sprayEffect != null)
         {
             smokeTransform = mainExtinguisher.sprayEffect.transform;
+        }
+
+        // Pastikan smokeTransform terikat sebagai child dari Corong (transform) agar selalu mengikuti arah corong
+        if (smokeTransform != null && smokeTransform.parent != transform)
+        {
+            smokeTransform.SetParent(transform, true);
+            Debug.Log("[APARHoseGrabber] 💨 Smoke particle system diparentkan secara eksplisit ke Corong.");
         }
     }
 

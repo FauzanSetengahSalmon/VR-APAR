@@ -1,18 +1,128 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit;
 
-// Kita extend dari XRSimpleInteractable bawaan XR Toolkit
+// Extend dari XRSimpleInteractable bawaan XR Toolkit
 public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable
 {
     [Header("Hold Settings")]
     public float holdDuration = 3.0f; // Tahan 3 detik
+
+    [Header("UI Visual Indicator")]
+    [Tooltip("Image UI untuk animasi radial fill lingkaran. Diisi otomatis jika kosong.")]
+    public Image progressFillImage;
+
+    [Tooltip("Warna awal progress fill")]
+    public Color startFillColor = new Color(0f, 0.85f, 1f, 0.9f); // Cyan
+    [Tooltip("Warna akhir saat progress penuh")]
+    public Color endFillColor = new Color(0.2f, 1f, 0.55f, 1f);   // Glowing Green/Cyan
 
     [Header("Events")]
     public UnityEvent OnHoldComplete;
 
     private float currentHoldTime = 0f;
     private bool isActivated = false;
+    private Vector3 defaultScale;
+
+    protected override void Awake()
+    {
+        base.Awake();
+        defaultScale = transform.localScale;
+        SetupProgressFillImage();
+    }
+
+    private void SetupProgressFillImage()
+    {
+        if (progressFillImage != null)
+        {
+            ConfigureFillImage(progressFillImage);
+            return;
+        }
+
+        // 1. Cari Image bernama "ProgressFill", "Fill", "LoadingFill"
+        Image[] images = GetComponentsInChildren<Image>(true);
+        foreach (var img in images)
+        {
+            string n = img.gameObject.name.ToLower();
+            if (n.Contains("fill") || n.Contains("progress") || n.Contains("loading"))
+            {
+                progressFillImage = img;
+                ConfigureFillImage(progressFillImage);
+                return;
+            }
+        }
+
+        // 2. Buat otomatis Radial Progress Ring Overlay jika belum ada
+        Canvas canvas = GetComponentInChildren<Canvas>();
+        if (canvas == null)
+        {
+            GameObject canvasGO = new GameObject("HoldButtonCanvas");
+            canvasGO.transform.SetParent(transform, false);
+            canvasGO.transform.localPosition = Vector3.zero;
+            canvasGO.transform.localRotation = Quaternion.identity;
+
+            canvas = canvasGO.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            RectTransform canvasRT = canvasGO.GetComponent<RectTransform>();
+            canvasRT.sizeDelta = new Vector2(200f, 200f);
+            canvasRT.localScale = Vector3.one * 0.005f;
+
+            canvasGO.AddComponent<CanvasScaler>();
+        }
+
+        GameObject fillGO = new GameObject("AutoProgressFill");
+        fillGO.transform.SetParent(canvas.transform, false);
+
+        progressFillImage = fillGO.AddComponent<Image>();
+        RectTransform fillRT = fillGO.GetComponent<RectTransform>();
+        fillRT.anchorMin = Vector2.zero;
+        fillRT.anchorMax = Vector2.one;
+        fillRT.sizeDelta = Vector2.zero;
+        fillRT.anchoredPosition = Vector2.zero;
+
+        // Buat sprite lingkaran procedural
+        progressFillImage.sprite = CreateCircleSprite(128);
+        ConfigureFillImage(progressFillImage);
+    }
+
+    private void ConfigureFillImage(Image img)
+    {
+        if (img == null) return;
+        img.type = Image.Type.Filled;
+        img.fillMethod = Image.FillMethod.Radial360;
+        img.fillOrigin = (int)Image.Origin360.Top;
+        img.fillClockwise = true;
+        img.fillAmount = 0f;
+        img.color = startFillColor;
+    }
+
+    private Sprite CreateCircleSprite(int resolution)
+    {
+        Texture2D tex = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false);
+        float radius = resolution * 0.5f;
+        Vector2 center = new Vector2(radius, radius);
+
+        for (int y = 0; y < resolution; y++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x, y), center);
+                // Buat ring/lingkaran halus
+                if (dist <= radius && dist >= radius * 0.70f)
+                {
+                    float alpha = Mathf.SmoothStep(1f, 0f, Mathf.Abs(dist - (radius * 0.85f)) / (radius * 0.15f));
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+                }
+                else
+                {
+                    tex.SetPixel(x, y, Color.clear);
+                }
+            }
+        }
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, resolution, resolution), new Vector2(0.5f, 0.5f));
+    }
 
     // IsActivated dipanggil otomatis oleh XR Toolkit saat tombol Trigger ditekan
     protected override void OnActivated(ActivateEventArgs args)
@@ -26,43 +136,70 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
     {
         base.OnDeactivated(args);
         isActivated = false;
-        currentHoldTime = 0f; // Reset kalau dilepas sebelum 3 detik
     }
 
-void Update()
-{
-    // Cek apakah tombol Trigger VR ditekan ATAU Klik Kiri Mouse (L Mouse di Simulator)
-    bool isTriggerPressed = false;
-
-    // Pengecekan dari XR Interactor
-    if (isSelected || isActivated)
+    private void Update()
     {
-        isTriggerPressed = true;
-    }
+        // Cek apakah tombol Trigger VR ditekan ATAU Klik Kiri Mouse (L Mouse di Simulator)
+        bool isTriggerPressed = false;
 
-    // Pengecekan dari L Mouse untuk XR Device Simulator
-    if (UnityEngine.InputSystem.Mouse.current != null && 
-        UnityEngine.InputSystem.Mouse.current.leftButton.isPressed)
-    {
-        isTriggerPressed = true;
-    }
-
-    // Logic Tahan 3 Detik
-    if (isHovered && isTriggerPressed)
-    {
-        currentHoldTime += Time.deltaTime;
-        Debug.Log("Holding... " + Mathf.Clamp(currentHoldTime, 0, holdDuration).ToString("F1") + "s");
-
-        if (currentHoldTime >= holdDuration)
+        // Pengecekan dari XR Interactor
+        if (isSelected || isActivated)
         {
-            Debug.Log("Misi Dimulai!");
-            OnHoldComplete?.Invoke();
-            currentHoldTime = 0f;
+            isTriggerPressed = true;
+        }
+
+        // Pengecekan dari L Mouse untuk XR Device Simulator
+        if (UnityEngine.InputSystem.Mouse.current != null && 
+            UnityEngine.InputSystem.Mouse.current.leftButton.isPressed)
+        {
+            isTriggerPressed = true;
+        }
+
+        // Logic Tahan 3 Detik dengan Animasi Visual Loading Radial
+        if (isHovered && isTriggerPressed)
+        {
+            currentHoldTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(currentHoldTime / holdDuration);
+
+            // Update Progress Fill Image
+            if (progressFillImage != null)
+            {
+                progressFillImage.fillAmount = progress;
+                progressFillImage.color = Color.Lerp(startFillColor, endFillColor, progress);
+            }
+
+            // Animasi Pulse Scale tombol
+            transform.localScale = Vector3.Lerp(transform.localScale, defaultScale * (1.0f + progress * 0.08f), Time.deltaTime * 12f);
+
+            Debug.Log($"[HoldButton] ⏳ Holding... {(progress * 100f):F0}% ({currentHoldTime:F1}s / {holdDuration:F1}s)");
+
+            if (currentHoldTime >= holdDuration)
+            {
+                Debug.Log("[HoldButton] 🚀 Hold Selesai — Mulai Misi!");
+                OnHoldComplete?.Invoke();
+                currentHoldTime = 0f;
+
+                if (progressFillImage != null)
+                    progressFillImage.fillAmount = 0f;
+            }
+        }
+        else
+        {
+            // Decaying halus saat dilepas
+            if (currentHoldTime > 0f)
+            {
+                currentHoldTime = Mathf.MoveTowards(currentHoldTime, 0f, Time.deltaTime * 4f);
+                float progress = Mathf.Clamp01(currentHoldTime / holdDuration);
+
+                if (progressFillImage != null)
+                {
+                    progressFillImage.fillAmount = progress;
+                    progressFillImage.color = Color.Lerp(startFillColor, endFillColor, progress);
+                }
+            }
+
+            transform.localScale = Vector3.Lerp(transform.localScale, defaultScale, Time.deltaTime * 10f);
         }
     }
-    else
-    {
-        currentHoldTime = 0f;
-    }
-}
 }
