@@ -6,256 +6,755 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public class APARPinGuideAnimation : MonoBehaviour
 {
+    // ============================================================
+    // REFERENSI APAR & PIN
+    // ============================================================
+
     [Header("Referensi APAR & Pin")]
+
+    [Tooltip("Transform pin APAR yang akan diberi efek pulsa.")]
     public Transform pinTransform;
+
+    [Tooltip("Komponen AutoFireExtinguisher pada APAR.")]
     public AutoFireExtinguisher mainExtinguisher;
+
+    [Tooltip("XR Grab Interactable dari APAR.")]
     public XRGrabInteractable grabInteractable;
 
-    // ── TAMBAHAN POSTER ──────────────────────────────────────────────────────
-    [Header("Referensi Poster Environment")]
-    [Tooltip("Masukkan GameObject 'APAR_Safety_Poster 1' dari Hierarchy ke sini")]
-    public GameObject safetyPoster; 
-    // ─────────────────────────────────────────────────────────────────────────
 
-    [Header("Gambar Controller Asli (Optional)")]
-    [Tooltip("Masukkan File Gambar/Sprite Controller Meta Quest 3 kamu di sini")]
-    public Sprite controllerRealSprite;
+    // ============================================================
+    // POSTER ENVIRONMENT
+    // ============================================================
+
+    [Header("Referensi Poster Environment")]
+
+    [Tooltip("Masukkan GameObject APAR_Safety_Poster dari Hierarchy.")]
+    public GameObject safetyPoster;
+
+
+    // ============================================================
+    // GAMBAR PANDUAN
+    // ============================================================
+
+    [Header("Gambar Panduan Tiap Tahap")]
+
+    [Tooltip("Gambar/foto khusus untuk tahap AMBIL APAR.")]
+    public Sprite ambilAPARSpr;
+
+    [Tooltip("Gambar/foto khusus untuk tahap TARIK PIN APAR.")]
+    public Sprite tarikPinSprite;
+
+
+    // ============================================================
+    // PENGATURAN UI VR
+    // ============================================================
 
     [Header("Pengaturan UI VR")]
+
+    [Tooltip("Jarak UI dari posisi pin APAR.")]
     public float uiHeightAbovePin = 0.65f;
+
+    [Tooltip("Ukuran Canvas World Space.")]
     public float uiScale = 0.001f;
 
-    // Private Cache
+
+    // ============================================================
+    // PRIVATE CACHE
+    // ============================================================
+
     private GameObject guideCanvasGO;
+
     private TextMeshProUGUI mainLabelText;
     private TextMeshProUGUI subLabelText;
-    private Image controllerImageUI;
+
+    private Image guideImageUI;
+
     private Camera mainCamera;
+
     private bool isGuideActive = true;
     private bool isAPARGrabbed = false;
+
     private Vector3 initialPinScale;
 
-    // ── Mission Lock ─────────────────────────────────────────────────────────
-    // Semua UI & grab APAR dikunci sampai misi resmi dimulai
+
+    // ============================================================
+    // MISSION LOCK
+    // ============================================================
+
+    // APAR dan UI tidak aktif sebelum misi dimulai.
     private bool isMissionStarted = false;
+
+
+    // ============================================================
+    // START
+    // ============================================================
 
     private void Start()
     {
-        // Pastikan posisi UI cukup tinggi melayang di atas APAR
-        if (uiHeightAbovePin < 0.65f) uiHeightAbovePin = 0.65f;
+        // Pastikan UI tidak terlalu rendah.
+        if (uiHeightAbovePin < 0.65f)
+        {
+            uiHeightAbovePin = 0.65f;
+        }
 
-        // Auto-find components
-        if (mainExtinguisher == null) mainExtinguisher = GetComponentInParent<AutoFireExtinguisher>();
-        if (grabInteractable == null) grabInteractable = GetComponentInParent<XRGrabInteractable>();
+
+        // --------------------------------------------------------
+        // AUTO FIND COMPONENT
+        // --------------------------------------------------------
+
+        if (mainExtinguisher == null)
+        {
+            mainExtinguisher =
+                GetComponentInParent<AutoFireExtinguisher>();
+        }
+
+        if (grabInteractable == null)
+        {
+            grabInteractable =
+                GetComponentInParent<XRGrabInteractable>();
+        }
+
+
+        // --------------------------------------------------------
+        // AUTO FIND PIN
+        // --------------------------------------------------------
 
         if (pinTransform == null && mainExtinguisher != null)
         {
-            Transform foundRing = mainExtinguisher.transform.Find("wire_ring_low");
-            if (foundRing != null) pinTransform = foundRing;
+            Transform foundRing =
+                mainExtinguisher.transform.Find("wire_ring_low");
+
+            if (foundRing != null)
+            {
+                pinTransform = foundRing;
+            }
         }
 
-        if (pinTransform != null) initialPinScale = pinTransform.localScale;
+
+        // Simpan scale awal pin.
+        if (pinTransform != null)
+        {
+            initialPinScale = pinTransform.localScale;
+        }
+
+
+        // Cari kamera VR.
         mainCamera = Camera.main;
 
-        // Pasang Event Detector dari XR Grab Interactable
+
+        // --------------------------------------------------------
+        // XR GRAB EVENTS
+        // --------------------------------------------------------
+
         if (grabInteractable != null)
         {
-            grabInteractable.selectEntered.AddListener(OnAPARGrabbed);
-            grabInteractable.selectExited.AddListener(OnAPARReleased);
+            grabInteractable.selectEntered.AddListener(
+                OnAPARGrabbed
+            );
+
+            grabInteractable.selectExited.AddListener(
+                OnAPARReleased
+            );
         }
+
+
+        // --------------------------------------------------------
+        // BUAT UI
+        // --------------------------------------------------------
 
         CreateCleanGuideUI();
 
-        // ── POSTER ──
-        // Sembunyikan poster saat awal game berjalan
+
+        // --------------------------------------------------------
+        // SEMBUNYIKAN POSTER
+        // --------------------------------------------------------
+
         if (safetyPoster != null)
+        {
             safetyPoster.SetActive(false);
+        }
     }
+
+
+    // ============================================================
+    // ON DESTROY
+    // ============================================================
 
     private void OnDestroy()
     {
         if (grabInteractable != null)
         {
-            grabInteractable.selectEntered.RemoveListener(OnAPARGrabbed);
-            grabInteractable.selectExited.RemoveListener(OnAPARReleased);
+            grabInteractable.selectEntered.RemoveListener(
+                OnAPARGrabbed
+            );
+
+            grabInteractable.selectExited.RemoveListener(
+                OnAPARReleased
+            );
         }
-        if (guideCanvasGO != null) Destroy(guideCanvasGO);
+
+        if (guideCanvasGO != null)
+        {
+            Destroy(guideCanvasGO);
+        }
     }
 
-    // Fungsi yang OTOMATIS dipanggil saat tangan VR memegang APAR
+
+    // ============================================================
+    // APAR DIAMBIL
+    // ============================================================
+
     private void OnAPARGrabbed(SelectEnterEventArgs args)
     {
-        // Blokir grab sebelum misi dimulai
+        // Jangan izinkan interaksi sebelum misi dimulai.
         if (!isMissionStarted)
         {
-            Debug.Log("[APARPinGuide] 🔒 Grab APAR diblokir — misi belum dimulai!");
+            Debug.Log(
+                "[APARPinGuide] Grab APAR diblokir - misi belum dimulai."
+            );
+
             return;
         }
 
+
+        // Tandai APAR sedang dipegang.
         isAPARGrabbed = true;
+
+
+        // Update teks + gambar menjadi tahap TARIK PIN.
         UpdateUIState();
 
-        // ── Sembunyikan poster otomatis saat APAR diambil ──
+
+        // --------------------------------------------------------
+        // SEMBUNYIKAN POSTER
+        // --------------------------------------------------------
+
         if (safetyPoster != null && safetyPoster.activeSelf)
         {
             safetyPoster.SetActive(false);
-            Debug.Log("[APARPinGuide] 🖼️ Poster otomatis tersembunyi karena APAR diambil.");
+
+            Debug.Log(
+                "[APARPinGuide] Poster disembunyikan karena APAR diambil."
+            );
         }
     }
 
-    // Fungsi dipanggil saat APAR dilepas
+
+    // ============================================================
+    // APAR DILEPAS
+    // ============================================================
+
     private void OnAPARReleased(SelectExitEventArgs args)
     {
         isAPARGrabbed = false;
+
         UpdateUIState();
     }
 
+
+    // ============================================================
+    // UPDATE
+    // ============================================================
+
     private void Update()
     {
-        // Jangan update UI sebelum misi dimulai
-        if (!isMissionStarted || !isGuideActive) return;
-
-        // Jika Pin sudah dicabut ➔ Hapus UI
-        if (mainExtinguisher != null && mainExtinguisher.pinPulled)
+        // Jangan update sebelum misi dimulai.
+        if (!isMissionStarted || !isGuideActive)
         {
-            HideGuide();
             return;
         }
 
-        if (mainCamera == null) mainCamera = Camera.main;
 
-        // Efek Pulsa Pin jika APAR sudah dipegang
-        if (isAPARGrabbed && pinTransform != null)
+        // --------------------------------------------------------
+        // CEK PIN SUDAH DICABUT
+        // --------------------------------------------------------
+
+        if (
+            mainExtinguisher != null &&
+            mainExtinguisher.pinPulled
+        )
         {
-            float pulse = 1f + Mathf.Sin(Time.time * 5f) * 0.08f;
-            pinTransform.localScale = initialPinScale * pulse;
+            HideGuide();
+
+            return;
         }
 
-        // Billboard UI (Selalu Menghadap Kamera VR)
+
+        // Pastikan kamera tersedia.
+        if (mainCamera == null)
+        {
+            mainCamera = Camera.main;
+        }
+
+
+        // --------------------------------------------------------
+        // ANIMASI PULSA PIN
+        // --------------------------------------------------------
+
+        if (isAPARGrabbed && pinTransform != null)
+        {
+            float pulse =
+                1f + Mathf.Sin(Time.time * 5f) * 0.08f;
+
+            pinTransform.localScale =
+                initialPinScale * pulse;
+        }
+
+
+        // --------------------------------------------------------
+        // BILLBOARD UI
+        // --------------------------------------------------------
+
         if (guideCanvasGO != null)
         {
-            Vector3 targetPos = (pinTransform != null) ? pinTransform.position : transform.position;
-            float floatEffect = Mathf.Sin(Time.time * 2.5f) * 0.012f;
-            guideCanvasGO.transform.position = targetPos + Vector3.up * (uiHeightAbovePin + floatEffect);
+            Vector3 targetPos =
+                pinTransform != null
+                    ? pinTransform.position
+                    : transform.position;
 
+
+            // Efek UI sedikit naik-turun.
+            float floatEffect =
+                Mathf.Sin(Time.time * 2.5f) * 0.012f;
+
+
+            guideCanvasGO.transform.position =
+                targetPos +
+                Vector3.up *
+                (uiHeightAbovePin + floatEffect);
+
+
+            // UI selalu menghadap kamera VR.
             if (mainCamera != null)
             {
-                guideCanvasGO.transform.LookAt(mainCamera.transform.position);
-                guideCanvasGO.transform.Rotate(0f, 180f, 0f);
+                guideCanvasGO.transform.LookAt(
+                    mainCamera.transform.position
+                );
+
+                guideCanvasGO.transform.Rotate(
+                    0f,
+                    180f,
+                    0f
+                );
             }
         }
     }
 
+
+    // ============================================================
+    // UPDATE UI
+    // ============================================================
+
     private void UpdateUIState()
     {
+        // ========================================================
+        // TAHAP 1
+        // ========================================================
+
         if (!isAPARGrabbed)
         {
-            // TAHAP 1
-            if (mainLabelText != null) mainLabelText.text = "AMBIL APAR";
-            if (subLabelText != null) subLabelText.text = "Tekan & Tahan tombol <color=#00DCFF>GRIP</color> Samping";
+            // Judul.
+            if (mainLabelText != null)
+            {
+                mainLabelText.text = "AMBIL APAR";
+            }
+
+
+            // Instruksi.
+            if (subLabelText != null)
+            {
+                subLabelText.text =
+                    "Tekan & Tahan tombol " +
+                    "<color=#00DCFF>GRIP</color> Samping";
+            }
+
+
+            // ----------------------------------------------------
+            // GAMBAR TAHAP 1
+            // ----------------------------------------------------
+
+            if (
+                guideImageUI != null &&
+                ambilAPARSpr != null
+            )
+            {
+                guideImageUI.sprite = ambilAPARSpr;
+
+                guideImageUI.preserveAspect = true;
+            }
         }
+
+
+        // ========================================================
+        // TAHAP 2
+        // ========================================================
+
         else
         {
-            // TAHAP 2
-            if (mainLabelText != null) mainLabelText.text = "TARIK PIN APAR";
-            if (subLabelText != null) subLabelText.text = "Tekan <color=#00DCFF>TRIGGER</color> & Tarik Pin";
+            // Judul.
+            if (mainLabelText != null)
+            {
+                mainLabelText.text = "TARIK PIN APAR";
+            }
+
+
+            // Instruksi.
+            if (subLabelText != null)
+            {
+                subLabelText.text =
+                    "Tarik Pin Apar " +
+                    "<color=#00DCFF>Di APAR Langsung</color> ";
+            }
+
+
+            // ----------------------------------------------------
+            // GAMBAR TAHAP 2
+            // ----------------------------------------------------
+
+            if (
+                guideImageUI != null &&
+                tarikPinSprite != null
+            )
+            {
+                guideImageUI.sprite = tarikPinSprite;
+
+                guideImageUI.preserveAspect = true;
+            }
         }
     }
+
+
+    // ============================================================
+    // CREATE UI
+    // ============================================================
 
     private void CreateCleanGuideUI()
     {
-        guideCanvasGO = new GameObject("APAR_Guide_UI");
+        // --------------------------------------------------------
+        // ROOT CANVAS
+        // --------------------------------------------------------
+
+        guideCanvasGO =
+            new GameObject("APAR_Guide_UI");
+
         guideCanvasGO.transform.SetParent(null);
 
-        Canvas canvas = guideCanvasGO.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.WorldSpace;
+
+        // --------------------------------------------------------
+        // CANVAS
+        // --------------------------------------------------------
+
+        Canvas canvas =
+            guideCanvasGO.AddComponent<Canvas>();
+
+        canvas.renderMode =
+            RenderMode.WorldSpace;
+
         canvas.sortingOrder = 100;
 
-        CanvasGroup cg = guideCanvasGO.AddComponent<CanvasGroup>();
+
+        // --------------------------------------------------------
+        // CANVAS GROUP
+        // --------------------------------------------------------
+
+        CanvasGroup cg =
+            guideCanvasGO.AddComponent<CanvasGroup>();
+
         cg.interactable = false;
         cg.blocksRaycasts = false;
 
-        RectTransform canvasRT = guideCanvasGO.GetComponent<RectTransform>();
-        canvasRT.sizeDelta = new Vector2(480f, 160f);
-        canvasRT.localScale = Vector3.one * uiScale;
 
-        // Background Dark Glass Panel
-        GameObject bgGO = new GameObject("CardBG");
-        bgGO.transform.SetParent(guideCanvasGO.transform, false);
-        Image bgImg = bgGO.AddComponent<Image>();
-        bgImg.color = new Color(0.06f, 0.07f, 0.1f, 0.9f);
-        RectTransform bgRT = bgGO.GetComponent<RectTransform>();
-        bgRT.anchorMin = Vector2.zero;
-        bgRT.anchorMax = Vector2.one;
-        bgRT.sizeDelta = Vector2.zero;
+        // --------------------------------------------------------
+        // CANVAS RECT
+        // --------------------------------------------------------
 
-        // Container Gambar Controller Real
-        GameObject imgGO = new GameObject("ControllerImage");
-        imgGO.transform.SetParent(guideCanvasGO.transform, false);
-        controllerImageUI = imgGO.AddComponent<Image>();
-        if (controllerRealSprite != null) controllerImageUI.sprite = controllerRealSprite;
-        else controllerImageUI.color = new Color(0.2f, 0.2f, 0.25f);
+        RectTransform canvasRT =
+            guideCanvasGO.GetComponent<RectTransform>();
 
-        RectTransform imgRT = imgGO.GetComponent<RectTransform>();
-        imgRT.anchoredPosition = new Vector2(-150f, 0f);
-        imgRT.sizeDelta = new Vector2(110f, 110f);
+        canvasRT.sizeDelta =
+            new Vector2(480f, 160f);
 
-        // Container Teks
-        GameObject textContainer = new GameObject("TextGroup");
-        textContainer.transform.SetParent(guideCanvasGO.transform, false);
-        RectTransform textContainerRT = textContainer.AddComponent<RectTransform>();
-        textContainerRT.anchoredPosition = new Vector2(40f, 0f);
-        textContainerRT.sizeDelta = new Vector2(300f, 120f);
+        canvasRT.localScale =
+            Vector3.one * uiScale;
 
-        GameObject titleGO = new GameObject("TitleText");
-        titleGO.transform.SetParent(textContainer.transform, false);
-        mainLabelText = titleGO.AddComponent<TextMeshProUGUI>();
+
+        // ========================================================
+        // BACKGROUND
+        // ========================================================
+
+        GameObject bgGO =
+            new GameObject("CardBG");
+
+        bgGO.transform.SetParent(
+            guideCanvasGO.transform,
+            false
+        );
+
+
+        Image bgImg =
+            bgGO.AddComponent<Image>();
+
+        bgImg.color =
+            new Color(
+                0.06f,
+                0.07f,
+                0.1f,
+                0.9f
+            );
+
+
+        RectTransform bgRT =
+            bgGO.GetComponent<RectTransform>();
+
+        bgRT.anchorMin =
+            Vector2.zero;
+
+        bgRT.anchorMax =
+            Vector2.one;
+
+        bgRT.sizeDelta =
+            Vector2.zero;
+
+
+        // ========================================================
+        // GAMBAR PANDUAN
+        // ========================================================
+
+        GameObject imgGO =
+            new GameObject("GuideImage");
+
+        imgGO.transform.SetParent(
+            guideCanvasGO.transform,
+            false
+        );
+
+
+        guideImageUI =
+            imgGO.AddComponent<Image>();
+
+
+        // --------------------------------------------------------
+        // DEFAULT IMAGE
+        // --------------------------------------------------------
+
+        if (ambilAPARSpr != null)
+        {
+            guideImageUI.sprite =
+                ambilAPARSpr;
+        }
+        else
+        {
+            guideImageUI.color =
+                new Color(
+                    0.2f,
+                    0.2f,
+                    0.25f
+                );
+        }
+
+
+        guideImageUI.preserveAspect = true;
+
+
+        // --------------------------------------------------------
+        // IMAGE RECT
+        // --------------------------------------------------------
+
+        RectTransform imgRT =
+            imgGO.GetComponent<RectTransform>();
+
+
+        imgRT.anchoredPosition =
+            new Vector2(-155f, 0f);
+
+        imgRT.sizeDelta =
+            new Vector2(100f, 100f);
+
+
+        // ========================================================
+        // TEXT CONTAINER
+        // ========================================================
+
+        GameObject textContainer =
+            new GameObject("TextGroup");
+
+        textContainer.transform.SetParent(
+            guideCanvasGO.transform,
+            false
+        );
+
+
+        RectTransform textContainerRT =
+            textContainer.AddComponent<RectTransform>();
+
+
+        textContainerRT.anchoredPosition =
+            new Vector2(85f, 0f);
+
+        textContainerRT.sizeDelta =
+            new Vector2(300f, 120f);
+
+
+        // ========================================================
+        // TITLE
+        // ========================================================
+
+        GameObject titleGO =
+            new GameObject("TitleText");
+
+        titleGO.transform.SetParent(
+            textContainer.transform,
+            false
+        );
+
+
+        mainLabelText =
+            titleGO.AddComponent<TextMeshProUGUI>();
+
+
         mainLabelText.fontSize = 30;
-        mainLabelText.color = Color.white;
-        mainLabelText.fontStyle = FontStyles.Bold;
-        mainLabelText.alignment = TextAlignmentOptions.Left;
-        RectTransform titleRT = titleGO.GetComponent<RectTransform>();
-        titleRT.anchoredPosition = new Vector2(0f, 20f);
-        titleRT.sizeDelta = new Vector2(300f, 45f);
 
-        GameObject subGO = new GameObject("SubText");
-        subGO.transform.SetParent(textContainer.transform, false);
-        subLabelText = subGO.AddComponent<TextMeshProUGUI>();
+        mainLabelText.color =
+            Color.white;
+
+        mainLabelText.fontStyle =
+            FontStyles.Bold;
+
+        mainLabelText.alignment =
+            TextAlignmentOptions.Left;
+
+
+        RectTransform titleRT =
+            titleGO.GetComponent<RectTransform>();
+
+
+        titleRT.anchoredPosition =
+            new Vector2(0f, 20f);
+
+        titleRT.sizeDelta =
+            new Vector2(300f, 45f);
+
+
+        // ========================================================
+        // SUB TEXT
+        // ========================================================
+
+        GameObject subGO =
+            new GameObject("SubText");
+
+        subGO.transform.SetParent(
+            textContainer.transform,
+            false
+        );
+
+
+        subLabelText =
+            subGO.AddComponent<TextMeshProUGUI>();
+
+
         subLabelText.fontSize = 18;
-        subLabelText.color = new Color(0.85f, 0.88f, 0.92f);
-        subLabelText.alignment = TextAlignmentOptions.Left;
-        RectTransform subRT = subGO.GetComponent<RectTransform>();
-        subRT.anchoredPosition = new Vector2(0f, -22f);
-        subRT.sizeDelta = new Vector2(300f, 50f);
 
-        // Sembunyikan canvas sampai misi dimulai
+        subLabelText.color =
+            new Color(
+                0.85f,
+                0.88f,
+                0.92f
+            );
+
+        subLabelText.alignment =
+            TextAlignmentOptions.Left;
+
+
+        RectTransform subRT =
+            subGO.GetComponent<RectTransform>();
+
+
+        subRT.anchoredPosition =
+            new Vector2(0f, -22f);
+
+        subRT.sizeDelta =
+            new Vector2(300f, 50f);
+
+
+        // ========================================================
+        // SEMBUNYIKAN UI
+        // ========================================================
+
         guideCanvasGO.SetActive(false);
 
+
+        // Set state awal.
         UpdateUIState();
     }
+
+
+    // ============================================================
+    // MISSION START
+    // ============================================================
 
     public void SetMissionStarted()
     {
         isMissionStarted = true;
-        if (guideCanvasGO != null && !mainExtinguisher.pinPulled)
+
+
+        // --------------------------------------------------------
+        // TAMPILKAN GUIDE
+        // --------------------------------------------------------
+
+        if (
+            guideCanvasGO != null &&
+            mainExtinguisher != null &&
+            !mainExtinguisher.pinPulled
+        )
         {
             guideCanvasGO.SetActive(true);
-            Debug.Log("[APARPinGuide] ✅ Misi dimulai — panduan APAR ditampilkan!");
+
+            Debug.Log(
+                "[APARPinGuide] Misi dimulai - panduan APAR ditampilkan."
+            );
         }
 
-        // ── POSTER ──
-        // Munculkan poster saat misi dimulai; akan otomatis hilang ketika APAR diambil
+
+        // --------------------------------------------------------
+        // TAMPILKAN POSTER
+        // --------------------------------------------------------
+
         if (safetyPoster != null)
         {
             safetyPoster.SetActive(true);
-            Debug.Log("[APARPinGuide] 🖼️ Poster K3 muncul — akan hilang otomatis saat APAR diambil.");
+
+            Debug.Log(
+                "[APARPinGuide] Poster K3 muncul."
+            );
         }
+
+
+        // Pastikan state UI benar.
+        UpdateUIState();
     }
+
+
+    // ============================================================
+    // HIDE GUIDE
+    // ============================================================
 
     private void HideGuide()
     {
         isGuideActive = false;
-        if (pinTransform != null) pinTransform.localScale = initialPinScale;
-        if (guideCanvasGO != null) Destroy(guideCanvasGO);
+
+
+        // Kembalikan ukuran pin ke ukuran awal.
+        if (pinTransform != null)
+        {
+            pinTransform.localScale =
+                initialPinScale;
+        }
+
+
+        // Hapus UI.
+        if (guideCanvasGO != null)
+        {
+            Destroy(guideCanvasGO);
+        }
     }
 }

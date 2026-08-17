@@ -4165,7 +4165,7 @@ Transform:
   m_GameObject: {fileID: 1622113369}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.387, y: 1.56, z: 0}
+  m_LocalPosition: {x: 0.425, y: 1.56, z: 0}
   m_LocalScale: {x: 0.094903, y: 0.094903, z: 0.094903}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5837,8 +5837,7 @@ MonoBehaviour:
   mainExtinguisher: {fileID: 0}
   grabInteractable: {fileID: 0}
   safetyPoster: {fileID: 768793980}
-  ambilAPARSpr: {fileID: 21300000, guid: 11aa5fcee27f4854395397b3ebc8aa19, type: 3}
-  tarikPinSprite: {fileID: 21300000, guid: cfd60666412a24842a4171754c0a3d27, type: 3}
+  controllerRealSprite: {fileID: 0}
   uiHeightAbovePin: 0.28
   uiScale: 0.0018
 --- !u!114 &4036790780004183759
@@ -5858,7 +5857,7 @@ MonoBehaviour:
   sprayVolume: 1
   extinguishRange: 5
   pinPulled: 1
-  handOffsetPosition: {x: -0.18, y: -0.45, z: 0.35}
+  handOffsetPosition: {x: -0.18, y: -0.45, z: 0.5}
   handOffsetRotation: {x: 0, y: -36.8, z: 0}
   staticMeshSelang: {fileID: 2153256}
   selangPengganti: {fileID: 1204160819}
