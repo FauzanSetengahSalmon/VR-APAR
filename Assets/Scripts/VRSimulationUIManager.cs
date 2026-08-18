@@ -947,7 +947,6 @@ public class VRSimulationUIManager : MonoBehaviour
         billboardScript.distance = 2.2f;
         billboardScript.heightOffset = 0.20f;
         billboardScript.smoothSpeed = 6.0f;
-        billboardScript.enabled = false; // Matikan auto-follow muka agar pemain bebas nengok 360° melihat sekeliling ruangan
 
         RectTransform canvasRT =
             canvasGO.GetComponent<RectTransform>();
