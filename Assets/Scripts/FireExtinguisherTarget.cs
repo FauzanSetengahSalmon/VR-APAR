@@ -1,6 +1,6 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.Rendering.Universal; // 1. Wajib untuk komponen Decal URP
+using UnityEngine.Rendering.Universal; // 1. Wajib ditambahkan untuk fungsi URP Decal
 
 public class FireExtinguisherTarget : MonoBehaviour
 {
@@ -10,9 +10,9 @@ public class FireExtinguisherTarget : MonoBehaviour
     public ParticleSystem smokeFromFire;
     public ParticleSystem embersParticle;
 
-    // 2. Kolom untuk menampung Decal Projector Gosong
+    // 2. Kolom baru untuk menampung Decal Projector
     [Header("Efek Gosong (Decal)")]
-    [Tooltip("Drag GameObject BurnDecal yang ada di Hierarchy ke sini")]
+    [Tooltip("Drag GameObject BurnDecal ke sini")]
     public DecalProjector burnDecal; 
 
     [Header("Point Light Api")]
@@ -53,7 +53,7 @@ public class FireExtinguisherTarget : MonoBehaviour
 
         originalScale = transform.localScale;
 
-        // 3. Set transparan di awal (fadeFactor = 0) agar bekas gosong belum kelihatan
+        // 3. Pastikan saat game mulai, tekstur gosong masih transparan (tidak kelihatan)
         if (burnDecal != null)
         {
             burnDecal.fadeFactor = 0f;
@@ -104,7 +104,7 @@ public class FireExtinguisherTarget : MonoBehaviour
 
         timeSinceLastHit = 0f;
 
-        // Kurangi HP api berdasarkan Extinguish Speed
+        // Kurangi HP api berdasarkan Extinguish Speed di Inspector
         currentHealth -= deltaTime * extinguishSpeed;
         currentHealth = Mathf.Clamp01(currentHealth);
 
@@ -129,6 +129,7 @@ public class FireExtinguisherTarget : MonoBehaviour
     {
         if (isExtinguished) return;
 
+        // Limiter agar tidak memproses ratusan kalkulasi per detik di CPU Quest
         if (Time.time - lastParticleCollisionTime < 0.1f) return;
         lastParticleCollisionTime = Time.time;
 
@@ -144,6 +145,7 @@ public class FireExtinguisherTarget : MonoBehaviour
 
         timeSinceLastHit += Time.deltaTime;
 
+        // Jika tidak disiram lagi > 0.3s, suara desisan berhenti
         if (timeSinceLastHit > 0.3f && audioSource != null && audioSource.isPlaying)
         {
             audioSource.Stop();
@@ -155,7 +157,7 @@ public class FireExtinguisherTarget : MonoBehaviour
         float safeHealth = Mathf.Max(currentHealth, 0.001f);
         transform.localScale = originalScale * safeHealth;
 
-        // 4. LOGIKA GOSONG: Makin kecil currentHealth api, fadeFactor makin mendekati 1 (makin pekat)
+        // 4. LOGIKA GOSONG: Semakin kecil currentHealth api, fadeFactor Decal makin mendekati 1.0 (makin hitam)
         if (burnDecal != null)
         {
             burnDecal.fadeFactor = 1f - currentHealth;
@@ -180,7 +182,7 @@ public class FireExtinguisherTarget : MonoBehaviour
     {
         isExtinguished = true;
 
-        // 5. Api padam sempurna: buat gosong 100% dan pisahkan Decal dari child agar tidak ikut tersembunyi
+        // 5. Saat api padam total, kepekatan gosong diset maksimal dan dilepas dari child (agar tidak ikut ter-hide)
         if (burnDecal != null)
         {
             burnDecal.fadeFactor = 1f;
