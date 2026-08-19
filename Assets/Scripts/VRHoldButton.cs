@@ -22,7 +22,7 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
     public UnityEvent OnHoldComplete;
 
     private float currentHoldTime = 0f;
-    private bool isActivated = false;
+    private bool isTriggerActivated = false;
     private Vector3 defaultScale;
 
     protected override void Awake()
@@ -30,6 +30,13 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
         base.Awake();
         defaultScale = transform.localScale;
         SetupProgressFillImage();
+
+        // Auto-assign Collider agar tidak error jika inspector lupa dimasukkan
+        Collider col = GetComponent<Collider>();
+        if (col != null && colliders.Count == 0)
+        {
+            colliders.Add(col);
+        }
     }
 
     private void SetupProgressFillImage()
@@ -108,7 +115,6 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
             for (int x = 0; x < resolution; x++)
             {
                 float dist = Vector2.Distance(new Vector2(x, y), center);
-                // Buat ring/lingkaran halus
                 if (dist <= radius && dist >= radius * 0.70f)
                 {
                     float alpha = Mathf.SmoothStep(1f, 0f, Mathf.Abs(dist - (radius * 0.85f)) / (radius * 0.15f));
@@ -124,61 +130,53 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
         return Sprite.Create(tex, new Rect(0, 0, resolution, resolution), new Vector2(0.5f, 0.5f));
     }
 
-    // IsActivated dipanggil otomatis oleh XR Toolkit saat tombol Trigger ditekan
+    // Hanya dipanggil oleh Trigger Depan (Activate) dari Controller yang MENUNJUK tombol
     protected override void OnActivated(ActivateEventArgs args)
     {
         base.OnActivated(args);
-        isActivated = true;
+        isTriggerActivated = true;
     }
 
-    // Dipanggil otomatis saat tombol Trigger dilepas
+    // Dipanggil saat Trigger Depan dilepas
     protected override void OnDeactivated(DeactivateEventArgs args)
     {
         base.OnDeactivated(args);
-        isActivated = false;
+        isTriggerActivated = false;
     }
 
     private void Update()
     {
-        // Cek apakah tombol Trigger VR ditekan ATAU Klik Kiri Mouse (L Mouse di Simulator)
-        bool isTriggerPressed = false;
+        // Pengecekan aman: Murni Trigger VR (isTriggerActivated) ATAU Klik Mouse jika sedang di Simulator
+        bool isPressed = isTriggerActivated;
 
-        // Pengecekan dari XR Interactor
-        if (isSelected || isActivated)
-        {
-            isTriggerPressed = true;
-        }
-
-        // Pengecekan dari L Mouse untuk XR Device Simulator
         if (UnityEngine.InputSystem.Mouse.current != null && 
             UnityEngine.InputSystem.Mouse.current.leftButton.isPressed)
         {
-            isTriggerPressed = true;
+            isPressed = true;
         }
 
-        // Logic Tahan 3 Detik dengan Animasi Visual Loading Radial
-        if (isHovered && isTriggerPressed)
+        // HANYA jalan jika Ray menunjuk tombol (isHovered) DAN tombol ditekan (isPressed)
+        if (isHovered && isPressed)
         {
             currentHoldTime += Time.deltaTime;
             float progress = Mathf.Clamp01(currentHoldTime / holdDuration);
 
-            // Update Progress Fill Image
             if (progressFillImage != null)
             {
                 progressFillImage.fillAmount = progress;
                 progressFillImage.color = Color.Lerp(startFillColor, endFillColor, progress);
             }
 
-            // Animasi Pulse Scale tombol
             transform.localScale = Vector3.Lerp(transform.localScale, defaultScale * (1.0f + progress * 0.08f), Time.deltaTime * 12f);
-
-            Debug.Log($"[HoldButton] ⏳ Holding... {(progress * 100f):F0}% ({currentHoldTime:F1}s / {holdDuration:F1}s)");
 
             if (currentHoldTime >= holdDuration)
             {
                 Debug.Log("[HoldButton] 🚀 Hold Selesai — Mulai Misi!");
                 OnHoldComplete?.Invoke();
+                
+                // Reset state agar tidak loop
                 currentHoldTime = 0f;
+                isTriggerActivated = false;
 
                 if (progressFillImage != null)
                     progressFillImage.fillAmount = 0f;
@@ -186,7 +184,7 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
         }
         else
         {
-            // Decaying halus saat dilepas
+            // Decaying/Reset saat trigger dilepas atau Ray melenceng dari tombol
             if (currentHoldTime > 0f)
             {
                 currentHoldTime = Mathf.MoveTowards(currentHoldTime, 0f, Time.deltaTime * 4f);
