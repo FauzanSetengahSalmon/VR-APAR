@@ -2,28 +2,25 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
-// Extend dari XRSimpleInteractable bawaan XR Toolkit
-public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable
+public class VRHoldButton : XRSimpleInteractable
 {
     [Header("Hold Settings")]
-    public float holdDuration = 3.0f; // Tahan 3 detik
+    public float holdDuration = 3.0f;
 
     [Header("UI Visual Indicator")]
-    [Tooltip("Image UI untuk animasi radial fill lingkaran. Diisi otomatis jika kosong.")]
     public Image progressFillImage;
-
-    [Tooltip("Warna awal progress fill")]
-    public Color startFillColor = new Color(0f, 0.85f, 1f, 0.9f); // Cyan
-    [Tooltip("Warna akhir saat progress penuh")]
-    public Color endFillColor = new Color(0.2f, 1f, 0.55f, 1f);   // Glowing Green/Cyan
+    public Color startFillColor = new Color(0f, 0.85f, 1f, 0.9f);
+    public Color endFillColor = new Color(0.2f, 1f, 0.55f, 1f);
 
     [Header("Events")]
     public UnityEvent OnHoldComplete;
 
     private float currentHoldTime = 0f;
-    private bool isTriggerActivated = false;
     private Vector3 defaultScale;
+    private IXRActivateInteractor currentActivatingInteractor;
 
     protected override void Awake()
     {
@@ -31,7 +28,6 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
         defaultScale = transform.localScale;
         SetupProgressFillImage();
 
-        // Auto-assign Collider agar tidak error jika inspector lupa dimasukkan
         Collider col = GetComponent<Collider>();
         if (col != null && colliders.Count == 0)
         {
@@ -47,7 +43,6 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
             return;
         }
 
-        // 1. Cari Image bernama "ProgressFill", "Fill", "LoadingFill"
         Image[] images = GetComponentsInChildren<Image>(true);
         foreach (var img in images)
         {
@@ -60,7 +55,6 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
             }
         }
 
-        // 2. Buat otomatis Radial Progress Ring Overlay jika belum ada
         Canvas canvas = GetComponentInChildren<Canvas>();
         if (canvas == null)
         {
@@ -88,7 +82,6 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
         fillRT.sizeDelta = Vector2.zero;
         fillRT.anchoredPosition = Vector2.zero;
 
-        // Buat sprite lingkaran procedural
         progressFillImage.sprite = CreateCircleSprite(128);
         ConfigureFillImage(progressFillImage);
     }
@@ -130,33 +123,39 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
         return Sprite.Create(tex, new Rect(0, 0, resolution, resolution), new Vector2(0.5f, 0.5f));
     }
 
-    // Hanya dipanggil oleh Trigger Depan (Activate) dari Controller yang MENUNJUK tombol
+    // Catat interactor mana yang menekan trigger
     protected override void OnActivated(ActivateEventArgs args)
     {
         base.OnActivated(args);
-        isTriggerActivated = true;
+        currentActivatingInteractor = args.interactorObject;
     }
 
-    // Dipanggil saat Trigger Depan dilepas
+    // Reset jika trigger dilepas
     protected override void OnDeactivated(DeactivateEventArgs args)
     {
         base.OnDeactivated(args);
-        isTriggerActivated = false;
+        if (args.interactorObject == currentActivatingInteractor)
+        {
+            currentActivatingInteractor = null;
+        }
     }
 
     private void Update()
     {
-        // Pengecekan aman: Murni Trigger VR (isTriggerActivated) ATAU Klik Mouse jika sedang di Simulator
-        bool isPressed = isTriggerActivated;
-
-        if (UnityEngine.InputSystem.Mouse.current != null && 
-            UnityEngine.InputSystem.Mouse.current.leftButton.isPressed)
+        // Pengecekan input terpisah dengan bersih
+        bool isVrHolding = isHovered && currentActivatingInteractor != null;
+        
+        bool isMouseHolding = false;
+        #if ENABLE_INPUT_SYSTEM
+        if (UnityEngine.InputSystem.Mouse.current != null)
         {
-            isPressed = true;
+            isMouseHolding = isHovered && UnityEngine.InputSystem.Mouse.current.leftButton.isPressed;
         }
+        #endif
 
-        // HANYA jalan jika Ray menunjuk tombol (isHovered) DAN tombol ditekan (isPressed)
-        if (isHovered && isPressed)
+        bool isPressed = isVrHolding || isMouseHolding;
+
+        if (isPressed)
         {
             currentHoldTime += Time.deltaTime;
             float progress = Mathf.Clamp01(currentHoldTime / holdDuration);
@@ -171,12 +170,11 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
 
             if (currentHoldTime >= holdDuration)
             {
-                Debug.Log("[HoldButton] 🚀 Hold Selesai — Mulai Misi!");
+                Debug.Log("[HoldButton] Hold Selesai!");
                 OnHoldComplete?.Invoke();
-                
-                // Reset state agar tidak loop
+
                 currentHoldTime = 0f;
-                isTriggerActivated = false;
+                currentActivatingInteractor = null;
 
                 if (progressFillImage != null)
                     progressFillImage.fillAmount = 0f;
@@ -184,7 +182,12 @@ public class VRHoldButton : UnityEngine.XR.Interaction.Toolkit.Interactables.XRS
         }
         else
         {
-            // Decaying/Reset saat trigger dilepas atau Ray melenceng dari tombol
+            // Reset interactor jika ray melenceng keluar objek saat menahan
+            if (!isHovered)
+            {
+                currentActivatingInteractor = null;
+            }
+
             if (currentHoldTime > 0f)
             {
                 currentHoldTime = Mathf.MoveTowards(currentHoldTime, 0f, Time.deltaTime * 4f);

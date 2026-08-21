@@ -454,12 +454,11 @@ public class VRSimulationUIManager : MonoBehaviour
                 float pulse =
                     (Mathf.Sin(Time.time * 6f) + 1f) * 0.5f;
 
-                loadingProgressBar.color =
-                    Color.Lerp(
-                        new Color(0f, 0.85f, 1f),
-                        new Color(0.2f, 1f, 0.7f),
-                        pulse
-                    );
+                loadingProgressBar.color = Color.Lerp(
+                    new Color(0.85f, 0.15f, 0.15f), // Merah Solid
+                    new Color(1f, 0.35f, 0.2f),     // Merah-Oranye Terang
+                    pulse
+                );
             }
 
             if (loadingPercentText != null)
@@ -585,8 +584,8 @@ public class VRSimulationUIManager : MonoBehaviour
         }
 
         string fullMessage =
-            "<color=#FF5722><b>LAPORAN KEBAKARAN DITERIMA!</b></color>\n" +
-            "\"Unit Pemadam meluncur. Segera ambil APAR, cabut pin safety, arahkan corong ke pangkal api, dan semprot!\"";
+            "<color=#FF5722><b>LAPORAN KEBAKARAN DITERIMA!</b></color> " +
+            "Unit Pemadam meluncur. Segera ambil APAR, cabut pin safety, arahkan corong ke pangkal api, dan semprot!";
 
         phoneDispatchMessage.text = "";
 
@@ -971,15 +970,16 @@ public class VRSimulationUIManager : MonoBehaviour
 
     private void BuildLoadingPanel()
     {
+        // Panel Background Hitam Merah Gelap
         loadingPanel =
             CreateRoundedPanel(
                 mainCanvas.gameObject,
                 "LoadingPanel",
                 new Vector2(650f, 312f),
                 new Color(
-                    0.05f,
                     0.07f,
-                    0.12f,
+                    0.03f,
+                    0.03f,
                     0.96f
                 ),
                 Vector2.zero
@@ -992,31 +992,33 @@ public class VRSimulationUIManager : MonoBehaviour
             34,
             FontStyles.Bold,
             new Vector2(0f, 94f),
-            Color.cyan
+            new Color(1f, 0.35f, 0f) // #FF5722
         );
 
+        // Garis Pembatas (DotLine) -> Merah Solid Transparan
         CreateRoundedPanel(
             loadingPanel,
             "DotLine",
             new Vector2(39f, 4f),
             new Color(
-                0f,
-                0.8f,
-                1f,
-                0.6f
+                0.85f,
+                0.15f,
+                0.15f,
+                0.8f
             ),
             new Vector2(0f, 68f)
         );
 
+        // Background Track Loading Bar -> Dark Slate / Charcoal
         GameObject barBg =
             CreateRoundedPanel(
                 loadingPanel,
                 "ProgressBG",
                 new Vector2(546f, 23f),
                 new Color(
-                    0.14f,
+                    0.16f,
+                    0.16f,
                     0.18f,
-                    0.28f,
                     1f
                 ),
                 new Vector2(0f, 18f)
@@ -1035,12 +1037,7 @@ public class VRSimulationUIManager : MonoBehaviour
         loadingProgressBar =
             barFill.AddComponent<Image>();
 
-        loadingProgressBar.color =
-            new Color(
-                0f,
-                0.88f,
-                1f
-            );
+        loadingProgressBar.color = new Color(0.85f, 0.15f, 0.15f);
 
         loadingProgressBar.type =
             Image.Type.Filled;
@@ -1056,6 +1053,7 @@ public class VRSimulationUIManager : MonoBehaviour
         fillRT.sizeDelta = Vector2.zero;
         fillRT.anchoredPosition = Vector2.zero;
 
+        // Text Persentase (0%) -> Putih Netral
         loadingPercentText =
             CreateText(
                 loadingPanel,
@@ -1067,6 +1065,7 @@ public class VRSimulationUIManager : MonoBehaviour
                 Color.white
             );
 
+        // Text Status ("Menginisialisasi...") -> Putih Netral
         loadingStatusText =
             CreateText(
                 loadingPanel,
@@ -1075,11 +1074,7 @@ public class VRSimulationUIManager : MonoBehaviour
                 17,
                 FontStyles.Italic,
                 new Vector2(0f, -76f),
-                new Color(
-                    0.7f,
-                    0.85f,
-                    1f
-                )
+                Color.white
             );
     }
 
@@ -1406,7 +1401,7 @@ public class VRSimulationUIManager : MonoBehaviour
             CreateText(
                 avatarBg,
                 "PhoneIcon",
-                "\u260E",
+                "☎",
                 40,
                 FontStyles.Bold,
                 new Vector2(0f, 2f),
@@ -1829,7 +1824,7 @@ public class VRSimulationUIManager : MonoBehaviour
             CreateText(
                 callBtnContainer,
                 "CallIconText",
-                "\u260E",
+                "☎",
                 31,
                 FontStyles.Bold,
                 new Vector2(0f, 1f),
@@ -1949,17 +1944,9 @@ public class VRSimulationUIManager : MonoBehaviour
     // ═══════════════════════════════════════════════════════════════════════
     // VICTORY PANEL
     // ═══════════════════════════════════════════════════════════════════════
-    //
-    // BAGIAN INI YANG DIPERBAIKI UNTUK TIMER
-    //
-    // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── Victory Panel — UI Skor Bintang ───
     private void BuildVictoryPanel()
     {
-        // ============================================================
-        // VICTORY PANEL
-        // ============================================================
         victoryPanel = new GameObject("VictoryPanel");
         victoryPanel.transform.SetParent(mainCanvas.transform, false);
 
@@ -1970,9 +1957,6 @@ public class VRSimulationUIManager : MonoBehaviour
         vpRT.sizeDelta = Vector2.zero;
         vpRT.anchoredPosition = Vector2.zero;
 
-        // ============================================================
-        // BACKGROUND SPRITE
-        // ============================================================
         GameObject bgGO = new GameObject("VictoryBgImage");
         bgGO.transform.SetParent(victoryPanel.transform, false);
 
@@ -1980,7 +1964,7 @@ public class VRSimulationUIManager : MonoBehaviour
         victoryBgImage.sprite = uiSkorBintang1;
         victoryBgImage.preserveAspect = true;
         victoryBgImage.type = Image.Type.Simple;
-        victoryBgImage.raycastTarget = false; // Prevent background card from blocking child button raycasts
+        victoryBgImage.raycastTarget = false;
 
         RectTransform bgRT = bgGO.GetComponent<RectTransform>();
         bgRT.anchorMin = new Vector2(0.5f, 0.5f);
@@ -1988,10 +1972,6 @@ public class VRSimulationUIManager : MonoBehaviour
         bgRT.pivot = new Vector2(0.5f, 0.5f);
         bgRT.anchoredPosition = Vector2.zero;
         bgRT.sizeDelta = new Vector2(530f, 750f);
-
-        // ============================================================
-        // TIMER (Tanpa background/patch kotak hitam, posisi tepat di tengah)
-        // ============================================================
 
         GameObject timerGO = new GameObject("VictoryTimeText");
         timerGO.transform.SetParent(bgGO.transform, false);
@@ -2019,26 +1999,20 @@ public class VRSimulationUIManager : MonoBehaviour
         timerRT.anchorMax = new Vector2(0.5f, 0.5f);
         timerRT.pivot = new Vector2(0.5f, 0.5f);
 
-        // Posisi tepat di tengah antara badge "WAKTU PEMADAMAN" dan sub-label "MENIT : DETIK"
-        timerRT.anchoredPosition = new Vector2(0f, 82f);
+        timerRT.anchoredPosition = new Vector2(0f, 75f);
         timerRT.sizeDelta = new Vector2(400f, 100f);
 
-        // ============================================================
-        // TOMBOL KEMBALI KE LOBBY
-        // ============================================================
         GameObject lobbyBtnGO = new GameObject("LobbyButton");
         lobbyBtnGO.transform.SetParent(bgGO.transform, false);
 
         Image lobbyBtnImage = lobbyBtnGO.AddComponent<Image>();
 
-        // Alpha 0.001f agar terdeteksi GraphicRaycaster/TrackedDeviceGraphicRaycaster tanpa terlihat secara visual
         lobbyBtnImage.color = new Color(1f, 1f, 1f, 0.001f);
         lobbyBtnImage.raycastTarget = true;
 
         Button lobbyBtn = lobbyBtnGO.AddComponent<Button>();
         lobbyBtn.transition = Selectable.Transition.None;
 
-        // Event tombol
         lobbyBtn.onClick.RemoveAllListeners();
         lobbyBtn.onClick.AddListener(() =>
         {
@@ -2052,21 +2026,8 @@ public class VRSimulationUIManager : MonoBehaviour
         lobbyRT.anchorMax = new Vector2(0.5f, 0.5f);
         lobbyRT.pivot = new Vector2(0.5f, 0.5f);
 
-        // Posisi dan ukuran tepat melingkupi tombol visual "KEMBALI KE LOBBY" di bagian bawah card
         lobbyRT.anchoredPosition = new Vector2(0f, -315f);
         lobbyRT.sizeDelta = new Vector2(460f, 120f);
-
-        // ============================================================
-        // EXTRA: DEBUG AREA BUTTON
-        // ============================================================
-        //
-        // Kalau mau melihat area klik tombol ketika debugging,
-        // ubah alpha 0f menjadi 0.15f.
-        //
-        // Jangan ubah kalau sudah final.
-        // ============================================================
-
-        // lobbyBtnImage.color = new Color(0f, 1f, 0f, 0.15f);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -30,8 +30,9 @@ public class APARHoseGrabber : MonoBehaviour
 
     private bool isHoseGrabbed = false;
 
-    private Vector3 nozzleRestLocalPos;
-    private Quaternion nozzleRestLocalRot;
+    // Variabel penampung posisi & rotasi World Space
+    private Vector3 nozzleRestWorldPos;
+    private Quaternion nozzleRestWorldRot;
 
     private Transform smokeTransform;
 
@@ -91,16 +92,11 @@ public class APARHoseGrabber : MonoBehaviour
         // ---------------------------------------------------------
 
         if (mainExtinguisher == null)
-            mainExtinguisher =
-                GetComponentInParent<AutoFireExtinguisher>();
+            mainExtinguisher = GetComponentInParent<AutoFireExtinguisher>();
 
-
-        // ---------------------------------------------------------
-        // Simpan posisi awal corong
-        // ---------------------------------------------------------
-
-        nozzleRestLocalPos = transform.localPosition;
-        nozzleRestLocalRot = transform.localRotation;
+        // Simpan posisi & rotasi murni di WORLD SPACE saat Start/Awake
+        nozzleRestWorldPos = transform.position;
+        nozzleRestWorldRot = transform.rotation;
     }
 
 
@@ -454,67 +450,30 @@ public class APARHoseGrabber : MonoBehaviour
     /// </summary>
     public void ResetToRestPosition()
     {
-        // ---------------------------------------------------------
-        // Paksa release dari XR Interaction Manager
-        // ---------------------------------------------------------
-
-        if (hoseGrabInteractable != null &&
-            hoseGrabInteractable.firstInteractorSelecting != null)
+        if (hoseGrabInteractable != null && hoseGrabInteractable.firstInteractorSelecting != null)
         {
-            var manager =
-                hoseGrabInteractable.interactionManager;
-
-
+            var manager = hoseGrabInteractable.interactionManager;
             if (manager != null)
             {
-                manager.SelectExit(
-                    hoseGrabInteractable.firstInteractorSelecting,
-                    hoseGrabInteractable
-                );
+                manager.SelectExit(hoseGrabInteractable.firstInteractorSelecting, hoseGrabInteractable);
             }
         }
 
-
-        // ---------------------------------------------------------
-        // Lepas animasi tangan kanan
-        // ---------------------------------------------------------
-
         if (rightHandTransform != null)
         {
-            VRHandAnimator handAnim =
-                rightHandTransform
-                    .GetComponentInParent<VRHandAnimator>();
-
-
-            if (handAnim != null)
-                handAnim.SetForceGrip(false);
+            VRHandAnimator handAnim = rightHandTransform.GetComponentInParent<VRHandAnimator>();
+            if (handAnim != null) handAnim.SetForceGrip(false);
         }
-
-
-        // ---------------------------------------------------------
-        // Reset state
-        // ---------------------------------------------------------
 
         isHoseGrabbed = false;
         rightHandTransform = null;
 
-
         if (mainExtinguisher != null)
             mainExtinguisher.isHoseHeld = false;
 
-
-        // ---------------------------------------------------------
-        // Kembalikan posisi Corong
-        // ---------------------------------------------------------
-
-        if (transform.parent != null)
-        {
-            transform.localPosition =
-                nozzleRestLocalPos;
-
-            transform.localRotation =
-                nozzleRestLocalRot;
-        }
+        // Kembali ke koordinat World awal
+        transform.position = nozzleRestWorldPos;
+        transform.rotation = nozzleRestWorldRot;
     }
 
 
@@ -565,23 +524,23 @@ public class APARHoseGrabber : MonoBehaviour
 
         // ---------------------------------------------------------
         // Kalau tidak digenggam,
-        // kembali perlahan ke posisi awal
+        // kembali perlahan ke posisi world awal (tanpa butuh parent)
         // ---------------------------------------------------------
 
-        else if (transform.parent != null)
+        else
         {
-            transform.localPosition =
+            transform.position =
                 Vector3.Lerp(
-                    transform.localPosition,
-                    nozzleRestLocalPos,
+                    transform.position,
+                    nozzleRestWorldPos,
                     Time.deltaTime * 12f
                 );
 
 
-            transform.localRotation =
+            transform.rotation =
                 Quaternion.Slerp(
-                    transform.localRotation,
-                    nozzleRestLocalRot,
+                    transform.rotation,
+                    nozzleRestWorldRot,
                     Time.deltaTime * 12f
                 );
         }
