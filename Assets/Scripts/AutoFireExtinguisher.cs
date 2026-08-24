@@ -28,6 +28,9 @@ public class AutoFireExtinguisher : MonoBehaviour
     [Tooltip("Apakah pin sudah dicabut? Bisa dicabut via tombol X/Y VR Controller atau grab Pin.")]
     public bool pinPulled = false;
 
+    [Header("Referensi Tangan Kiri Manual (Optional)")]
+    public Transform leftHandTransformManual;
+
     [Header("Offset Pegangan Tangan Kiri (Tabung)")]
     [Tooltip("Geser posisi tabung APAR relatif terhadap tangan kiri (mencegah menutupi layar VR)")]
     public Vector3 handOffsetPosition = new Vector3(-0.25f, -0.72f, 0.45f);
@@ -65,9 +68,6 @@ public class AutoFireExtinguisher : MonoBehaviour
 
     // ── Mission Lock ─────────────────────────────────────────────────────────
     private bool isMissionStarted = false;
-
-    // ── State Input Controller VR ───────────────────────────────────────────
-    private bool isTriggerPressedOnController = false;
 
     private APARPropStateMachine propStateMachine;
 
@@ -363,18 +363,15 @@ public class AutoFireExtinguisher : MonoBehaviour
     /// <summary>
     /// Memeriksa status penekanan Trigger pada controller.
     /// </summary>
-    private void CheckTriggerInput()
+    private bool CheckTriggerInput()
     {
-        isTriggerPressedOnController = false;
-
         // Cek trigger dari Left & Right Controller
         var leftHand = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
         if (leftHand.isValid)
         {
             if (leftHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float leftTrig) && leftTrig > 0.15f)
             {
-                isTriggerPressedOnController = true;
-                return;
+                return true;
             }
         }
 
@@ -383,16 +380,17 @@ public class AutoFireExtinguisher : MonoBehaviour
         {
             if (rightHand.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float rightTrig) && rightTrig > 0.15f)
             {
-                isTriggerPressedOnController = true;
-                return;
+                return true;
             }
         }
 
         // Fallback editor / keyboard space
         if (Keyboard.current != null && Keyboard.current.spaceKey.isPressed)
         {
-            isTriggerPressedOnController = true;
+            return true;
         }
+
+        return false;
     }
 
     /// <summary>Panggil saat misi resmi dimulai — body tabung bisa di-grab.</summary>
@@ -410,26 +408,55 @@ public class AutoFireExtinguisher : MonoBehaviour
 
     private Transform FindLeftHandTransform()
     {
-        // 1. Cari berdasarkan GameObject name Tangan Kiri
+        if (leftHandTransformManual != null)
+            return leftHandTransformManual;
+
+        // 1. Cari berdasarkan GameObject name Tangan Kiri spesifik
         string[] searchNames = {
-            "LeftHand Controller", "Left Controller", "LeftHandDirectInteractor",
-            "LeftHand", "Left Interaction Follower", "LeftHand Index-Tip"
+            "LeftHand Controller", "Left Controller", "Left-Hand Controller",
+            "LeftHandDirectInteractor", "LeftDirectInteractor", "LeftRayInteractor",
+            "LeftHand", "LeftController", "Left Near-Far Interactor"
         };
 
         foreach (string n in searchNames)
         {
             GameObject go = GameObject.Find(n);
-            if (go != null) return go.transform;
+            if (go != null)
+            {
+                string gn = go.name.ToLower();
+                if (!gn.Contains("attach") && !gn.Contains("caster") && !gn.Contains("stabilization"))
+                    return go.transform;
+            }
         }
 
-        // 2. Cari berdasarkan XRBaseInteractor dengan tag/nama 'Left'
+        // 2. Cari berdasarkan XRBaseInteractor dengan tag/nama 'Left' (filter attach/caster/stabilization)
         var interactors = FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor>(FindObjectsSortMode.None);
         foreach (var interactor in interactors)
         {
             string name = interactor.gameObject.name.ToLower();
             if (name.Contains("left") && !name.Contains("ui"))
             {
+                if (name.Contains("attach") || name.Contains("caster") || name.Contains("stabilization"))
+                {
+                    if (interactor.transform.parent != null)
+                        return interactor.transform.parent;
+                }
                 return interactor.transform;
+            }
+        }
+
+        // 3. Fallback: Cari GameObject di bawah Camera Offset / XR Origin yang mengandung 'left'
+        GameObject cameraOffset = GameObject.Find("Camera Offset");
+        if (cameraOffset == null) cameraOffset = GameObject.Find("XR Origin (XR Rig)");
+        if (cameraOffset != null)
+        {
+            foreach (Transform child in cameraOffset.GetComponentsInChildren<Transform>(true))
+            {
+                string cn = child.name.ToLower();
+                if (cn.Contains("left") && !cn.Contains("ui") && !cn.Contains("attach") && !cn.Contains("caster") && !cn.Contains("stabilization"))
+                {
+                    return child;
+                }
             }
         }
 
@@ -449,7 +476,14 @@ public class AutoFireExtinguisher : MonoBehaviour
         // Cari Tangan Kiri di scene (selalu pastikan Tabung dipegang Tangan Kiri)
         Transform leftHandTransform = FindLeftHandTransform();
         if (leftHandTransform == null && args.interactorObject != null)
-            leftHandTransform = args.interactorObject.transform;
+        {
+            Transform t = args.interactorObject.transform;
+            if (t.name.ToLower().Contains("attach") || t.name.ToLower().Contains("caster") || t.name.ToLower().Contains("stabilization"))
+            {
+                if (t.parent != null) t = t.parent;
+            }
+            leftHandTransform = t;
+        }
 
         if (leftHandTransform != null)
         {

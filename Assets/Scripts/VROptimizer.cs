@@ -22,6 +22,9 @@ public class VROptimizer : MonoBehaviour
 
     private void Awake()
     {
+        // 0. Pastikan TrackedPoseDriver terpasang pada Left & Right Controller
+        // VRControllerTrackingFixer.FixControllerTracking();
+
         // 1. Kunci Refresh Rate VR ke 90 FPS
         Application.targetFrameRate = targetVRFrameRate;
         QualitySettings.vSyncCount = 0; // VR SDK yang mengatur VSync

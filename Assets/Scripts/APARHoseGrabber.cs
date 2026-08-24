@@ -176,52 +176,55 @@ public class APARHoseGrabber : MonoBehaviour
 
     private Transform FindRightHandTransform()
     {
-        // ---------------------------------------------------------
-        // Cari berdasarkan nama
-        // ---------------------------------------------------------
+        if (rightHandTransformManual != null)
+            return rightHandTransformManual;
 
         string[] searchNames =
         {
-            "RightHand Controller",
-            "Right Controller",
-            "RightHandDirectInteractor",
-            "RightHand",
-            "Right Interaction Follower",
-            "RightHand Index-Tip"
+            "RightHand Controller", "Right Controller", "Right-Hand Controller",
+            "RightHandDirectInteractor", "RightDirectInteractor", "RightRayInteractor",
+            "RightHand", "RightController", "Right Near-Far Interactor"
         };
-
 
         foreach (string n in searchNames)
         {
             GameObject go = GameObject.Find(n);
-
             if (go != null)
-                return go.transform;
+            {
+                string gn = go.name.ToLower();
+                if (!gn.Contains("attach") && !gn.Contains("caster") && !gn.Contains("stabilization"))
+                    return go.transform;
+            }
         }
 
-
-        // ---------------------------------------------------------
-        // Cari XR Interactor dengan nama Right
-        // ---------------------------------------------------------
-
-        var interactors =
-            FindObjectsByType<XRBaseInteractor>(
-                FindObjectsSortMode.None
-            );
-
-
+        var interactors = FindObjectsByType<XRBaseInteractor>(FindObjectsSortMode.None);
         foreach (var interactor in interactors)
         {
-            string name =
-                interactor.gameObject.name.ToLower();
-
-            if (name.Contains("right") &&
-                !name.Contains("ui"))
+            string name = interactor.gameObject.name.ToLower();
+            if (name.Contains("right") && !name.Contains("ui"))
             {
+                if (name.Contains("attach") || name.Contains("caster") || name.Contains("stabilization"))
+                {
+                    if (interactor.transform.parent != null)
+                        return interactor.transform.parent;
+                }
                 return interactor.transform;
             }
         }
 
+        GameObject cameraOffset = GameObject.Find("Camera Offset");
+        if (cameraOffset == null) cameraOffset = GameObject.Find("XR Origin (XR Rig)");
+        if (cameraOffset != null)
+        {
+            foreach (Transform child in cameraOffset.GetComponentsInChildren<Transform>(true))
+            {
+                string cn = child.name.ToLower();
+                if (cn.Contains("right") && !cn.Contains("ui") && !cn.Contains("attach") && !cn.Contains("caster") && !cn.Contains("stabilization"))
+                {
+                    return child;
+                }
+            }
+        }
 
         return null;
     }
@@ -378,15 +381,14 @@ public class APARHoseGrabber : MonoBehaviour
 
         if (args.interactorObject != null)
         {
-            rightHandTransform =
-                args.interactorObject.transform;
+            Transform t = args.interactorObject.transform;
+            if (t.name.ToLower().Contains("attach") || t.name.ToLower().Contains("caster") || t.name.ToLower().Contains("stabilization"))
+            {
+                if (t.parent != null) t = t.parent;
+            }
+            rightHandTransform = t;
 
-
-            VRHandAnimator handAnim =
-                args.interactorObject.transform
-                    .GetComponentInParent<VRHandAnimator>();
-
-
+            VRHandAnimator handAnim = rightHandTransform.GetComponentInParent<VRHandAnimator>();
             if (handAnim != null)
                 handAnim.SetForceGrip(true);
         }

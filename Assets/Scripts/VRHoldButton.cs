@@ -1,11 +1,12 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
-public class VRHoldButton : XRSimpleInteractable
+public class VRHoldButton : XRSimpleInteractable, IPointerDownHandler, IPointerUpHandler, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("Hold Settings")]
     public float holdDuration = 3.0f;
@@ -20,7 +21,13 @@ public class VRHoldButton : XRSimpleInteractable
 
     private float currentHoldTime = 0f;
     private Vector3 defaultScale;
-    private IXRActivateInteractor currentActivatingInteractor;
+
+    // Track state dari berbagai input method (XRI, EventSystem UI, Mouse)
+    private IXRInteractor currentActivatingInteractor;
+    private IXRInteractor currentSelectingInteractor;
+    private bool isPointerDown = false;
+    private bool isPointerHovered = false;
+    private bool isHoldTriggered = false;
 
     protected override void Awake()
     {
@@ -29,7 +36,20 @@ public class VRHoldButton : XRSimpleInteractable
         SetupProgressFillImage();
 
         Collider col = GetComponent<Collider>();
-        if (col != null && colliders.Count == 0)
+        if (col == null)
+        {
+            RectTransform rt = GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                BoxCollider boxCol = gameObject.AddComponent<BoxCollider>();
+                boxCol.size = new Vector3(rt.rect.width, rt.rect.height, 1.0f);
+                if (colliders.Count == 0)
+                {
+                    colliders.Add(boxCol);
+                }
+            }
+        }
+        else if (colliders.Count == 0)
         {
             colliders.Add(col);
         }
@@ -123,14 +143,13 @@ public class VRHoldButton : XRSimpleInteractable
         return Sprite.Create(tex, new Rect(0, 0, resolution, resolution), new Vector2(0.5f, 0.5f));
     }
 
-    // Catat interactor mana yang menekan trigger
+    // --- Event XRI Activate ---
     protected override void OnActivated(ActivateEventArgs args)
     {
         base.OnActivated(args);
         currentActivatingInteractor = args.interactorObject;
     }
 
-    // Reset jika trigger dilepas
     protected override void OnDeactivated(DeactivateEventArgs args)
     {
         base.OnDeactivated(args);
@@ -140,22 +159,70 @@ public class VRHoldButton : XRSimpleInteractable
         }
     }
 
+    // --- Event XRI Select ---
+    protected override void OnSelectEntered(SelectEnterEventArgs args)
+    {
+        base.OnSelectEntered(args);
+        currentSelectingInteractor = args.interactorObject;
+    }
+
+    protected override void OnSelectExited(SelectExitEventArgs args)
+    {
+        base.OnSelectExited(args);
+        if (args.interactorObject == currentSelectingInteractor)
+        {
+            currentSelectingInteractor = null;
+        }
+    }
+
+    // --- Event Systems UI Pointer (Canvas WorldSpace Raycast) ---
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        isPointerDown = true;
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        isPointerDown = false;
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        isPointerHovered = true;
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        isPointerHovered = false;
+    }
+
     private void Update()
     {
-        // Pengecekan input terpisah dengan bersih
-        bool isVrHolding = isHovered && currentActivatingInteractor != null;
-        
+        // Pengecekan status penahanan dari VR XRI (Select atau Activate atau State)
+        bool isXriHolding = isSelected || (interactorsSelecting.Count > 0) || currentSelectingInteractor != null || currentActivatingInteractor != null;
+
+        // Pengecekan status penahanan dari EventSystem UI Canvas
+        bool isUiHolding = isPointerDown;
+
+        // Pengecekan mouse di Unity Editor / PC Debug
+        bool isHoveredAny = isHovered || isPointerHovered;
         bool isMouseHolding = false;
+
         #if ENABLE_INPUT_SYSTEM
         if (UnityEngine.InputSystem.Mouse.current != null)
         {
-            isMouseHolding = isHovered && UnityEngine.InputSystem.Mouse.current.leftButton.isPressed;
+            isMouseHolding = isHoveredAny && UnityEngine.InputSystem.Mouse.current.leftButton.isPressed;
+        }
+        #else
+        if (Input.GetMouseButton(0))
+        {
+            isMouseHolding = isHoveredAny;
         }
         #endif
 
-        bool isPressed = isVrHolding || isMouseHolding;
+        bool isPressed = isXriHolding || isUiHolding || isMouseHolding;
 
-        if (isPressed)
+        if (isPressed && !isHoldTriggered)
         {
             currentHoldTime += Time.deltaTime;
             float progress = Mathf.Clamp01(currentHoldTime / holdDuration);
@@ -170,11 +237,14 @@ public class VRHoldButton : XRSimpleInteractable
 
             if (currentHoldTime >= holdDuration)
             {
-                Debug.Log("[HoldButton] Hold Selesai!");
+                isHoldTriggered = true;
+                Debug.Log("[VRHoldButton] ✅ Hold Selesai! Memulai Misi...");
                 OnHoldComplete?.Invoke();
 
                 currentHoldTime = 0f;
                 currentActivatingInteractor = null;
+                currentSelectingInteractor = null;
+                isPointerDown = false;
 
                 if (progressFillImage != null)
                     progressFillImage.fillAmount = 0f;
@@ -182,10 +252,9 @@ public class VRHoldButton : XRSimpleInteractable
         }
         else
         {
-            // Reset interactor jika ray melenceng keluar objek saat menahan
-            if (!isHovered)
+            if (!isPressed)
             {
-                currentActivatingInteractor = null;
+                isHoldTriggered = false;
             }
 
             if (currentHoldTime > 0f)
