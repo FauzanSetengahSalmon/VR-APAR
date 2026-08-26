@@ -2569,6 +2569,7 @@ MonoBehaviour:
   innerFireParticle: {fileID: 0}
   smokeFromFire: {fileID: 0}
   embersParticle: {fileID: 0}
+  burnMarkObject: {fileID: 0}
   burnDecal: {fileID: 648771943}
   fireLight: {fileID: 1235845715}
   extinguishSpeed: 0.4
@@ -2824,7 +2825,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0777d029ed3dffa4692f417d4aba19ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DecalProjector
-  m_Material: {fileID: 2100000, guid: efb032d0550b5174db12d4f69ced3938, type: 2}
+  m_Material: {fileID: 2100000, guid: 4cda34a9d6704ca4990951b1ee298b2c, type: 2}
   m_DrawDistance: 1000
   m_FadeScale: 1
   m_StartAngleFade: 180
@@ -2884,7 +2885,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0777d029ed3dffa4692f417d4aba19ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DecalProjector
-  m_Material: {fileID: 2100000, guid: efb032d0550b5174db12d4f69ced3938, type: 2}
+  m_Material: {fileID: 2100000, guid: 4cda34a9d6704ca4990951b1ee298b2c, type: 2}
   m_DrawDistance: 1000
   m_FadeScale: 1
   m_StartAngleFade: 180
@@ -2935,6 +2936,7 @@ MonoBehaviour:
   innerFireParticle: {fileID: 0}
   smokeFromFire: {fileID: 0}
   embersParticle: {fileID: 0}
+  burnMarkObject: {fileID: 0}
   burnDecal: {fileID: 483623574}
   fireLight: {fileID: 1460427892}
   extinguishSpeed: 0.3
@@ -3297,7 +3299,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0777d029ed3dffa4692f417d4aba19ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DecalProjector
-  m_Material: {fileID: 2100000, guid: 19f741c2e7e6c88439bd47cf70bf3eee, type: 2}
+  m_Material: {fileID: 2100000, guid: 4cda34a9d6704ca4990951b1ee298b2c, type: 2}
   m_DrawDistance: 1000
   m_FadeScale: 1
   m_StartAngleFade: 180
@@ -3309,7 +3311,7 @@ MonoBehaviour:
     m_Bits: 1
   m_ScaleMode: 0
   m_Offset: {x: 0, y: 0, z: 0.285}
-  m_Size: {x: 2, y: 2, z: 0.57}
+  m_Size: {x: 1.44, y: 1.32, z: 0.57}
   m_FadeFactor: 1
   version: 1
   m_DecalLayerMask: 1
@@ -3456,6 +3458,7 @@ MonoBehaviour:
   innerFireParticle: {fileID: 0}
   smokeFromFire: {fileID: 0}
   embersParticle: {fileID: 0}
+  burnMarkObject: {fileID: 0}
   burnDecal: {fileID: 1380778483}
   fireLight: {fileID: 2034185079}
   extinguishSpeed: 0.4
@@ -3675,7 +3678,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0777d029ed3dffa4692f417d4aba19ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DecalProjector
-  m_Material: {fileID: 2100000, guid: 19f741c2e7e6c88439bd47cf70bf3eee, type: 2}
+  m_Material: {fileID: 2100000, guid: 4cda34a9d6704ca4990951b1ee298b2c, type: 2}
   m_DrawDistance: 1000
   m_FadeScale: 1
   m_StartAngleFade: 180
@@ -3687,7 +3690,7 @@ MonoBehaviour:
     m_Bits: 1
   m_ScaleMode: 0
   m_Offset: {x: 0, y: 0, z: 0.175}
-  m_Size: {x: 1.1, y: 1.69, z: 0.35}
+  m_Size: {x: 1.1, y: 1.53, z: 0.35}
   m_FadeFactor: 1
   version: 1
   m_DecalLayerMask: 1
@@ -3925,7 +3928,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.3
+      value: 0.35
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -6147,7 +6150,7 @@ Transform:
   m_GameObject: {fileID: 1207431496}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.16, z: -0.98}
+  m_LocalPosition: {x: 0, y: -0.16, z: -2.37}
   m_LocalScale: {x: 1.0636, y: 1.0636, z: 1.0636}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6165,7 +6168,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0777d029ed3dffa4692f417d4aba19ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DecalProjector
-  m_Material: {fileID: 2100000, guid: efb032d0550b5174db12d4f69ced3938, type: 2}
+  m_Material: {fileID: 2100000, guid: 4cda34a9d6704ca4990951b1ee298b2c, type: 2}
   m_DrawDistance: 1000
   m_FadeScale: 1
   m_StartAngleFade: 180
@@ -6177,7 +6180,7 @@ MonoBehaviour:
     m_Bits: 1
   m_ScaleMode: 0
   m_Offset: {x: 0, y: 0, z: 1}
-  m_Size: {x: 1.66, y: 1, z: 2}
+  m_Size: {x: 1.39, y: 1, z: 2}
   m_FadeFactor: 1
   version: 1
   m_DecalLayerMask: 1
@@ -6732,7 +6735,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0777d029ed3dffa4692f417d4aba19ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DecalProjector
-  m_Material: {fileID: 2100000, guid: 19f741c2e7e6c88439bd47cf70bf3eee, type: 2}
+  m_Material: {fileID: 2100000, guid: 4cda34a9d6704ca4990951b1ee298b2c, type: 2}
   m_DrawDistance: 1000
   m_FadeScale: 0.9
   m_StartAngleFade: 180
@@ -6744,7 +6747,7 @@ MonoBehaviour:
     m_Bits: 1
   m_ScaleMode: 0
   m_Offset: {x: 0, y: 0, z: 0.205}
-  m_Size: {x: 1.45, y: 1.64, z: 0.41}
+  m_Size: {x: 1.25, y: 1.07, z: 0.41}
   m_FadeFactor: 1
   version: 1
   m_DecalLayerMask: 1
@@ -6799,7 +6802,7 @@ Transform:
   m_GameObject: {fileID: 1451353351}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -11.466, y: 0.3, z: -3.641}
+  m_LocalPosition: {x: -11.466, y: 0.35, z: -3.641}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7137,6 +7140,7 @@ MonoBehaviour:
   innerFireParticle: {fileID: 0}
   smokeFromFire: {fileID: 0}
   embersParticle: {fileID: 0}
+  burnMarkObject: {fileID: 0}
   burnDecal: {fileID: 1207431498}
   fireLight: {fileID: 1757999609}
   extinguishSpeed: 0.1
@@ -7597,6 +7601,7 @@ MonoBehaviour:
   innerFireParticle: {fileID: 0}
   smokeFromFire: {fileID: 0}
   embersParticle: {fileID: 0}
+  burnMarkObject: {fileID: 0}
   burnDecal: {fileID: 536401323}
   fireLight: {fileID: 1459353699}
   extinguishSpeed: 0.3
@@ -9526,7 +9531,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6598815579406187037, guid: 18ddb545287c546e19cc77dc9fbb2189, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -9568,6 +9573,7 @@ MonoBehaviour:
   innerFireParticle: {fileID: 0}
   smokeFromFire: {fileID: 0}
   embersParticle: {fileID: 0}
+  burnMarkObject: {fileID: 0}
   burnDecal: {fileID: 411698174}
   fireLight: {fileID: 204661678}
   extinguishSpeed: 0.3
@@ -9911,7 +9917,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2082215276
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10116,7 +10122,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.7071068, z: 0, w: -0.7071068}
   m_LocalPosition: {x: -9.122, y: 1.563, z: -3.806}
-  m_LocalScale: {x: 0.3712482, y: 0.3712482, z: 0.3712482}
+  m_LocalScale: {x: 0.3318699, y: 0.3318699, z: 0.3318699}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}

@@ -10,14 +10,20 @@ public class FireExtinguisherTarget : MonoBehaviour
     public ParticleSystem smokeFromFire;
     public ParticleSystem embersParticle;
 
-    [Header("Efek Gosong (Decal)")]
-    [Tooltip("Drag GameObject BurnDecal ke sini")]
+    [Header("Efek Gosong (Quad Mesh / Decal)")]
+    [Tooltip("Drag GameObject Quad / Mesh bekas gosong ke sini (Sangat direkomendasikan untuk VR)")]
+    public GameObject burnMarkObject;
+
+    [Tooltip("Drag GameObject BurnDecal jika memakai DecalProjector")]
     public DecalProjector burnDecal;
 
     [Header("Point Light Api")]
     public Light fireLight;
     private Vector3 initialWorldPosition;
     private Quaternion initialWorldRotation;
+    private Vector3 initialBurnMarkPos;
+    private Quaternion initialBurnMarkRot;
+    private Vector3 initialBurnMarkScale;
 
     [Header("Pengaturan Pemadaman")]
     public float extinguishSpeed = 0.2f;
@@ -50,6 +56,14 @@ public class FireExtinguisherTarget : MonoBehaviour
             fireParticle = GetComponent<ParticleSystem>();
 
         originalScale = transform.localScale;
+
+        if (burnMarkObject != null)
+        {
+            initialBurnMarkPos = burnMarkObject.transform.position;
+            initialBurnMarkRot = burnMarkObject.transform.rotation;
+            initialBurnMarkScale = burnMarkObject.transform.localScale;
+            burnMarkObject.SetActive(false); // Sembunyikan saat api masih hidup
+        }
 
         if (burnDecal != null)
         {
@@ -174,6 +188,16 @@ public class FireExtinguisherTarget : MonoBehaviour
     private void OnFireExtinguished()
     {
         isExtinguished = true;
+
+        if (burnMarkObject != null)
+        {
+            // Lepas parent agar tidak hilang saat objek api mati
+            burnMarkObject.transform.SetParent(null);
+            burnMarkObject.transform.position = initialBurnMarkPos;
+            burnMarkObject.transform.rotation = initialBurnMarkRot;
+            burnMarkObject.transform.localScale = initialBurnMarkScale;
+            burnMarkObject.SetActive(true); // Tampilkan bekas gosong
+        }
 
         if (burnDecal != null)
         {
