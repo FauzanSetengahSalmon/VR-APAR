@@ -480,19 +480,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 3696997343183828087}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!134 &82037955
-PhysicsMaterial:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: 
-  serializedVersion: 2
-  m_DynamicFriction: 0.6
-  m_StaticFriction: 0.6
-  m_Bounciness: 0
-  m_FrictionCombine: 0
-  m_BounceCombine: 0
 --- !u!4 &103456804 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8829451551789304537, guid: 8206b722d11501a449d6a278cca2adfa, type: 3}
@@ -3407,20 +3394,6 @@ MonoBehaviour:
   m_LocomotionProvider: {fileID: 357950944}
   m_MinHeight: 0.8
   m_MaxHeight: 2.2
---- !u!114 &559563048
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 559563033}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0a485ab299069542933ede398a2dc42, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VRSpawn
-  targetSpawnPoint: {fileID: 1451353352}
-  waitFrames: 5
 --- !u!1 &580468091
 GameObject:
   m_ObjectHideFlags: 0
@@ -3905,7 +3878,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1178791450436251564, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_RequestedTrackingOriginMode
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 1316853283282549446, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_IsActive
@@ -3921,11 +3894,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -11.466
+      value: -11.566
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -4018,7 +3991,7 @@ PrefabInstance:
     - target: {fileID: 6232745470614056090, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_Material
       value: 
-      objectReference: {fileID: 82037955}
+      objectReference: {fileID: 0}
     - target: {fileID: 6232745470614056090, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_SkinWidth
       value: 0.05
@@ -4053,9 +4026,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 559563040}
-    - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 559563048}
     - targetCorrespondingSourceObject: {fileID: 1767192433, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1125005365}
@@ -6798,8 +6768,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1451353351}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -11.466, y: 0.3, z: -3.641}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -11.655, y: 0.51388, z: -3.641}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10490,8 +10460,8 @@ MonoBehaviour:
   extinguishRange: 5
   pinPulled: 1
   leftHandTransformManual: {fileID: 0}
-  handOffsetPosition: {x: 0.22, y: -0.62, z: 0.26}
-  handOffsetRotation: {x: 42.8, y: 236.3, z: 25.61}
+  handOffsetPosition: {x: -0.18, y: -0.45, z: 0.35}
+  handOffsetRotation: {x: 0, y: -36.8, z: 0}
   staticMeshSelang: {fileID: 2153256}
   selangPengganti: {fileID: 1204160819}
   hoseGrabber: {fileID: 7920620841569432452}

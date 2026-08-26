@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
 public class FireManager : MonoBehaviour
 {
     [Header("Daftar Api")]
     public List<FireExtinguisherTarget> fireTargets = new List<FireExtinguisherTarget>();
+
+    [Header("Karakter NPC Audio")]
+    [Tooltip("Drag AudioSource milik karakter-karakter yang berteriak ke sini")]
+    public List<AudioSource> characterAudioSources = new List<AudioSource>();
 
     [Header("Efek Sukses Kebakaran Padam")]
     public AudioClip victoryAudioClip;
@@ -57,6 +60,15 @@ public class FireManager : MonoBehaviour
         // Matikan alarm kebakaran
         var alarm = FindFirstObjectByType<FireAlarmSystem>();
         if (alarm != null) alarm.StopAlarm();
+
+        // ── Matikan Suara Teriakan Karakter ──────────────────
+        foreach (AudioSource charAudio in characterAudioSources)
+        {
+            if (charAudio != null && charAudio.isPlaying)
+            {
+                charAudio.Stop();
+            }
+        }
 
         // Play victory sound
         if (audioSource != null && victoryAudioClip != null)

@@ -32,10 +32,10 @@ public class AutoFireExtinguisher : MonoBehaviour
     public Transform leftHandTransformManual;
 
     [Header("Offset Pegangan Tangan Kiri (Tabung)")]
-    [Tooltip("Geser posisi tabung APAR relatif terhadap tangan kiri (mencegah menutupi layar VR)")]
-    public Vector3 handOffsetPosition = new Vector3(-0.25f, -0.72f, 0.45f);
-    [Tooltip("Putar rotasi tabung APAR relatif terhadap tangan kiri")]
-    public Vector3 handOffsetRotation = new Vector3(10f, 35f, 0f);
+    [Tooltip("Geser posisi tabung APAR relatif terhadap tangan kiri.\nX = kiri/kanan (negatif = lebih ke kiri)\nY = atas/bawah\nZ = maju/mundur")]
+    public Vector3 handOffsetPosition = new Vector3(-0.45f, -0.72f, 0.45f);
+    [Tooltip("Putar rotasi tabung APAR relatif terhadap tangan kiri.\nZ = tekukan pergelangan tangan (negatif = tekuk ke dalam/kiri)")]
+    public Vector3 handOffsetRotation = new Vector3(10f, 35f, -20f);
 
     [Header("Referensi Mesh 3D Selang Statis")]
     [Tooltip("GameObject Mesh 3D Selang bawaan model 3D (akan dinonaktifkan otomatis saat APAR diambil)")]

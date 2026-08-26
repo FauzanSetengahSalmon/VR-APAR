@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DecalRendererFeature
   m_Active: 1
   m_Settings:
-    technique: 0
+    technique: 2
     maxDrawDistance: 1000
     decalLayers: 0
     dBufferSettings:
@@ -96,7 +96,7 @@ MonoBehaviour:
     AfterOpaque: 0
     Source: 1
     NormalSamples: 1
-    Intensity: 0.1
+    Intensity: 0.08
     DirectLightingStrength: 0.25
     Radius: 0.5
     Samples: 1

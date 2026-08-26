@@ -430,6 +430,9 @@ public class VRSimulationUIManager : MonoBehaviour
 
     private IEnumerator LoadingRoutine()
     {
+        if (billboardScript != null)
+            billboardScript.SnapToFront();
+
         SetPhase(UIPhase.Loading);
 
         if (loadingPanel != null)
