@@ -38,6 +38,21 @@ public class VROptimizer : MonoBehaviour
             OptimizeSceneLights();
         }
 
+        // 4. Pastikan Semua Tembok & Geometri Lingkungan Memiliki Collider
+        VRSceneEnvironmentColliders.GenerateEnvironmentColliders();
+
+        // 5. Terapkan Standar Kontrol Simulasi (Disable Stick Maju-Mundur & Tombol A/B/X/Y)
+        if (FindFirstObjectByType<VRSimulationControlManager>() == null)
+        {
+            gameObject.AddComponent<VRSimulationControlManager>();
+        }
+
+        // 6. Aktifkan Sistem Peringatan Jarak Aman Api (1.5 - 2.0 Meter)
+        if (FindFirstObjectByType<VRFireProximityWarning>() == null)
+        {
+            gameObject.AddComponent<VRFireProximityWarning>();
+        }
+
         Debug.Log("[VROptimizer] 🚀 Optimasi VR Otomatis Selesai! Visual Memukau + 90 FPS Mulus.");
     }
 

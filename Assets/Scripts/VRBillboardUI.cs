@@ -1,21 +1,38 @@
 using System.Collections;
 using UnityEngine;
 
+/// <summary>
+/// Menjaga UI Billboard agar selalu berada di depan pandangan mata VR Player
+/// dan secara otomatis mencegah UI menembus tembok, sekat, atau objek padat lainnya.
+/// </summary>
 public class VRBillboardUI : MonoBehaviour
 {
+    [Header("Posisi Billboard")]
     public Transform targetCamera;
-    public float distance = 2.0f;
-    public float heightOffset = 0.0f; // atur tinggi UI dari mata
-    public float smoothSpeed = 5.0f;
+
+    [Tooltip("Jarak ideal UI di depan mata pemain (meter).")]
+    public float distance = 1.8f;
+
+    [Tooltip("Jarak minimal UI dari kamera saat terhalang tembok (meter).")]
+    public float minDistance = 0.5f;
+
+    [Tooltip("Offset ketinggian UI relatif terhadap tinggi mata (meter).")]
+    public float heightOffset = 0.05f;
+
+    [Tooltip("Kecepatan lerp mengikuti gerakan kepala.")]
+    public float smoothSpeed = 8.0f;
 
     [Header("Anti Wall Clip")]
-    [Tooltip("Layer mask untuk deteksi tembok. Default = semua layer.")]
-    public LayerMask wallLayers = ~0; // semua layer
+    [Tooltip("Layer mask untuk deteksi tembok/rintangan solid.")]
+    public LayerMask wallLayers = ~0;
 
-    [Tooltip("Jarak aman UI dari permukaan tembok (meter)")]
-    public float wallSafeMargin = 0.12f;
+    [Tooltip("Jarak aman UI dari permukaan tembok (meter).")]
+    public float wallSafeMargin = 0.15f;
 
-    // Flag agar billboard tidak aktif sampai tracking headset stabil
+    [Tooltip("Radius bola spherecast untuk mendeteksi batas lebar UI.")]
+    public float checkRadius = 0.2f;
+
+    // Flag agar billboard tidak aktif sebelum tracking headset stabil
     private bool _isReady = false;
 
     void Start()
@@ -27,16 +44,17 @@ public class VRBillboardUI : MonoBehaviour
         StartCoroutine(WaitForTracking());
     }
 
-    // Tunggu beberapa frame agar headset tracking benar-benar aktif
     private IEnumerator WaitForTracking()
     {
         _isReady = false;
 
-        // Tunggu minimal 5 frame sampai tracking XR stabil
+        // Tunggu beberapa frame sampai tracking XR stabil
         for (int i = 0; i < 5; i++)
             yield return null;
 
-        // Jika tracking belum memberikan arah yang valid, tunggu lagi
+        if (targetCamera == null && Camera.main != null)
+            targetCamera = Camera.main.transform;
+
         if (targetCamera != null)
         {
             Vector3 forward = targetCamera.forward;
@@ -49,15 +67,7 @@ public class VRBillboardUI : MonoBehaviour
                 forward.y = 0f;
             }
 
-            // Langsung snap ke posisi yang benar (tanpa lerp) saat pertama kali
-            forward.Normalize();
-            if (forward.sqrMagnitude > 0.01f)
-            {
-                Vector3 snapPos = targetCamera.position + forward * distance;
-                snapPos.y = targetCamera.position.y + heightOffset;
-                transform.position = snapPos;
-                transform.rotation = Quaternion.LookRotation(forward);
-            }
+            SnapToFront();
         }
 
         _isReady = true;
@@ -65,45 +75,62 @@ public class VRBillboardUI : MonoBehaviour
 
     void LateUpdate()
     {
-        if (!_isReady || targetCamera == null) return;
+        if (!_isReady) return;
 
-        // Ambil arah pandang kamera tapi Nol-kan sumbu Y (biar ga ngikut atas/bawah)
-        Vector3 cameraForward = targetCamera.forward;
-        cameraForward.y = 0;
-        cameraForward.Normalize();
-
-        // Guard: jika forward tidak valid (tracking belum stabil), skip frame ini
-        if (cameraForward.sqrMagnitude < 0.01f) return;
-
-        // Tentukan posisi UI tepat di depan pemain sejajar mata
-        Vector3 targetPosition = targetCamera.position + (cameraForward * distance);
-        targetPosition.y = targetCamera.position.y + heightOffset; // Jaga ketinggian tetap relatif
-
-        // === Anti Wall Clip: raycast dari kamera ke target ===
-        Vector3 rayOrigin = targetCamera.position;
-        Vector3 rayDir = targetPosition - rayOrigin;
-        float rayDist = rayDir.magnitude;
-        if (rayDist > 0.01f)
+        if (targetCamera == null)
         {
-            RaycastHit hit;
-            if (Physics.Raycast(rayOrigin, rayDir.normalized, out hit, rayDist, wallLayers))
-            {
-                // Ada tembok di antara kamera dan posisi UI — mundurkan UI ke depan tembok
-                targetPosition = hit.point - rayDir.normalized * wallSafeMargin;
-                targetPosition.y = targetCamera.position.y + heightOffset;
-            }
+            if (Camera.main != null) targetCamera = Camera.main.transform;
+            else return;
         }
 
-        // Gerakkan posisi secara smooth
+        // Arah pandang kamera horizontal (sumbu Y dinetralkan)
+        Vector3 cameraForward = targetCamera.forward;
+        cameraForward.y = 0f;
+
+        if (cameraForward.sqrMagnitude < 0.01f) return;
+        cameraForward.Normalize();
+
+        Vector3 camPos = targetCamera.position;
+        float targetDist = distance;
+
+        // === Anti-Wall Clip: SphereCast & Raycast dari kamera ke arah UI ===
+        RaycastHit hit;
+        if (Physics.SphereCast(camPos, checkRadius, cameraForward, out hit, distance + checkRadius, wallLayers, QueryTriggerInteraction.Ignore))
+        {
+            // Ada tembok/rintangan di depan -- batasi jarak agar tetap di depan tembok
+            float hitDist = hit.distance;
+            targetDist = Mathf.Max(minDistance, hitDist - wallSafeMargin);
+        }
+        else if (Physics.Raycast(camPos, cameraForward, out hit, distance, wallLayers, QueryTriggerInteraction.Ignore))
+        {
+            targetDist = Mathf.Max(minDistance, hit.distance - wallSafeMargin);
+        }
+
+        // Posisi target yang aman
+        Vector3 targetPosition = camPos + (cameraForward * targetDist);
+        targetPosition.y = camPos.y + heightOffset;
+
+        // === Instant Wall Barrier ===
+        // Jika posisi UI saat ini lebih jauh dari jarak batas tembok,
+        // langsung tarik UI mendekat seketika agar tidak ada frame tembus tembok saat lerp
+        float currentDistFromCam = Vector3.Distance(camPos, transform.position);
+        if (currentDistFromCam > targetDist + 0.1f)
+        {
+            Vector3 clampedPos = camPos + (transform.position - camPos).normalized * targetDist;
+            clampedPos.y = camPos.y + heightOffset;
+            transform.position = clampedPos;
+        }
+
+        // Lerp mulus ke posisi target
         transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * smoothSpeed);
 
-        // Putar UI agar selalu menghadap ke pemain (hanya rotasi Y / Kiri-Kanan)
+        // Rotasi selalu menghadap ke pemain
         Quaternion targetRotation = Quaternion.LookRotation(cameraForward);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * smoothSpeed);
     }
 
     /// <summary>
-    /// Langsung posisikan UI tepat di depan mata pemain seketika (tanpa animasi lerp geser)
+    /// Langsung posisikan UI tepat di depan mata pemain seketika (tanpa delay).
     /// </summary>
     public void SnapToFront()
     {
@@ -113,29 +140,24 @@ public class VRBillboardUI : MonoBehaviour
         if (targetCamera == null) return;
 
         Vector3 cameraForward = targetCamera.forward;
-        cameraForward.y = 0;
-        cameraForward.Normalize();
+        cameraForward.y = 0f;
 
         if (cameraForward.sqrMagnitude > 0.01f)
         {
-            Vector3 targetPosition = targetCamera.position + (cameraForward * distance);
-            targetPosition.y = targetCamera.position.y + heightOffset;
+            cameraForward.Normalize();
+            Vector3 camPos = targetCamera.position;
+            float targetDist = distance;
 
-            // Anti wall clip
-            Vector3 rayOrigin = targetCamera.position;
-            Vector3 rayDir = targetPosition - rayOrigin;
-            float rayDist = rayDir.magnitude;
-            if (rayDist > 0.01f)
+            if (Physics.SphereCast(camPos, checkRadius, cameraForward, out RaycastHit hit, distance + checkRadius, wallLayers, QueryTriggerInteraction.Ignore))
             {
-                if (Physics.Raycast(rayOrigin, rayDir.normalized, out RaycastHit hit, rayDist, wallLayers))
-                {
-                    targetPosition = hit.point - rayDir.normalized * wallSafeMargin;
-                    targetPosition.y = targetCamera.position.y + heightOffset;
-                }
+                targetDist = Mathf.Max(minDistance, hit.distance - wallSafeMargin);
             }
+
+            Vector3 targetPosition = camPos + (cameraForward * targetDist);
+            targetPosition.y = camPos.y + heightOffset;
 
             transform.position = targetPosition;
             transform.rotation = Quaternion.LookRotation(cameraForward);
         }
     }
-}
+}

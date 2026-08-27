@@ -127,6 +127,18 @@ public class VRSimulationUIManager : MonoBehaviour
 
         SetupWorldSpaceCanvas();
         BuildUIComponents();
+
+        // Inisialisasi Sistem VR APAR:
+        VRSceneEnvironmentColliders.GenerateEnvironmentColliders();
+        
+        if (FindFirstObjectByType<VRSimulationControlManager>() == null)
+            gameObject.AddComponent<VRSimulationControlManager>();
+
+        if (FindFirstObjectByType<VRFireProximityWarning>() == null)
+            gameObject.AddComponent<VRFireProximityWarning>();
+
+        if (FindFirstObjectByType<VROptimizer>() == null)
+            gameObject.AddComponent<VROptimizer>();
     }
 
     private void Start()
@@ -946,9 +958,10 @@ public class VRSimulationUIManager : MonoBehaviour
         billboardScript =
             canvasGO.AddComponent<VRBillboardUI>();
 
-        billboardScript.distance = 2.2f;
-        billboardScript.heightOffset = 0.20f;
-        billboardScript.smoothSpeed = 6.0f;
+        billboardScript.distance = 1.7f;
+        billboardScript.minDistance = 0.5f;
+        billboardScript.heightOffset = 0.05f;
+        billboardScript.smoothSpeed = 8.0f;
 
         RectTransform canvasRT =
             canvasGO.GetComponent<RectTransform>();
@@ -957,7 +970,7 @@ public class VRSimulationUIManager : MonoBehaviour
             new Vector2(1000f, 900f);
 
         canvasRT.localScale =
-            Vector3.one * 0.003f;
+            Vector3.one * 0.0018f;
     }
 
     private void BuildUIComponents()
@@ -2002,8 +2015,8 @@ public class VRSimulationUIManager : MonoBehaviour
         timerRT.anchorMax = new Vector2(0.5f, 0.5f);
         timerRT.pivot = new Vector2(0.5f, 0.5f);
 
-        timerRT.anchoredPosition = new Vector2(0f, 75f);
-        timerRT.sizeDelta = new Vector2(400f, 100f);
+        timerRT.anchoredPosition = new Vector2(0f, 38f);
+        timerRT.sizeDelta = new Vector2(400f, 90f);
 
         GameObject lobbyBtnGO = new GameObject("LobbyButton");
         lobbyBtnGO.transform.SetParent(bgGO.transform, false);

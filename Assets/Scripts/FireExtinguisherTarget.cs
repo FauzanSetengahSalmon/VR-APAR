@@ -19,11 +19,6 @@ public class FireExtinguisherTarget : MonoBehaviour
 
     [Header("Point Light Api")]
     public Light fireLight;
-    private Vector3 initialWorldPosition;
-    private Quaternion initialWorldRotation;
-    private Vector3 initialBurnMarkPos;
-    private Quaternion initialBurnMarkRot;
-    private Vector3 initialBurnMarkScale;
 
     [Header("Pengaturan Pemadaman")]
     public float extinguishSpeed = 0.2f;
@@ -36,11 +31,21 @@ public class FireExtinguisherTarget : MonoBehaviour
     public FireAlarmSystem alarmSystem;
     public FireManager fireManager;
 
+    [Header("Batas Fisik Api (Mentok)")]
+    [Tooltip("Radius pembatas fisik solid agar pemain tidak bisa menginjak/menerobos api (meter).")]
+    public float barrierRadius = 0.85f;
+    [Tooltip("Tinggi pembatas fisik (meter).")]
+    public float barrierHeight = 2.0f;
+
+    public bool IsExtinguished => isExtinguished;
+    public float CurrentHealth => currentHealth;
+
     private float currentHealth = 1.0f;
     private Vector3 originalScale;
     private bool isExtinguished = false;
     private float timeSinceLastHit = 99f;
 
+    private CapsuleCollider _barrierCollider;
     private AudioSource audioSource;
     private ParticleSystem.EmissionModule emissionModule;
     private ParticleSystem.EmissionModule innerEmissionModule;
@@ -57,21 +62,44 @@ public class FireExtinguisherTarget : MonoBehaviour
 
         originalScale = transform.localScale;
 
+        // ── 1. BURN MARK: Selalu aktif & terlihat dari awal sampai akhir ──
         if (burnMarkObject != null)
         {
-            initialBurnMarkPos = burnMarkObject.transform.position;
-            initialBurnMarkRot = burnMarkObject.transform.rotation;
-            initialBurnMarkScale = burnMarkObject.transform.localScale;
-            burnMarkObject.SetActive(false); // Sembunyikan saat api masih hidup
+            // Lepas parent sejak awal dengan mempertahankan world transform asli
+            burnMarkObject.transform.SetParent(null, true);
+            burnMarkObject.SetActive(true); // Selalu aktif dari awal sampai akhir
         }
 
         if (burnDecal != null)
         {
-            // 1. Simpan posisi & rotasi asli Decal di world sebelum parent-nya mengecil
-            initialWorldPosition = burnDecal.transform.position;
-            initialWorldRotation = burnDecal.transform.rotation;
+            // Lepas parent sejak awal dengan mempertahankan world transform asli
+            burnDecal.transform.SetParent(null, true);
+            burnDecal.fadeFactor = 1f; // Selalu terlihat 100% dari awal sampai akhir
+        }
 
-            burnDecal.fadeFactor = 0f; // Sembunyikan di awal
+        // ── 2. SMOKE: Auto-find jika belum diisi & Unparent sejak awal tanpa merusak transform ──
+        if (smokeFromFire == null)
+        {
+            foreach (var ps in GetComponentsInChildren<ParticleSystem>(true))
+            {
+                if (ps != fireParticle && ps != innerFireParticle && ps != embersParticle)
+                {
+                    if (ps.gameObject.name.IndexOf("smoke", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        ps.gameObject.name.IndexOf("asap", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        smokeFromFire = ps;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (smokeFromFire != null)
+        {
+            // Lepas parent dengan mempertahankan posisi, rotasi, dan skala asli 100%
+            smokeFromFire.transform.SetParent(null, true);
+            smokeFromFire.gameObject.SetActive(true);
+            smokeFromFire.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
         if (fireParticle != null)
@@ -111,6 +139,23 @@ public class FireExtinguisherTarget : MonoBehaviour
             alarmSystem = FindFirstObjectByType<FireAlarmSystem>();
         if (fireManager == null)
             fireManager = FindFirstObjectByType<FireManager>();
+
+        SetupPhysicalBarrier();
+    }
+
+    private void SetupPhysicalBarrier()
+    {
+        // Buat collider pembatas solid berdiri tegak di world space agar player tertahan dan tidak bisa menginjak api
+        GameObject barrierGO = new GameObject($"{gameObject.name}_Physical_Barrier");
+        barrierGO.transform.position = transform.position;
+        barrierGO.transform.rotation = Quaternion.identity;
+        barrierGO.transform.localScale = Vector3.one;
+
+        _barrierCollider = barrierGO.AddComponent<CapsuleCollider>();
+        _barrierCollider.radius = barrierRadius;
+        _barrierCollider.height = barrierHeight;
+        _barrierCollider.center = Vector3.up * (barrierHeight * 0.5f);
+        _barrierCollider.isTrigger = false; // Solid physical barrier
     }
 
     public void ExtinguishGradually(float deltaTime)
@@ -167,13 +212,13 @@ public class FireExtinguisherTarget : MonoBehaviour
     {
         float safeHealth = Mathf.Max(currentHealth, 0.001f);
 
-        // Logika mengecilkan api tetap seperti bawaan kamu
+        // Logika mengecilkan api tetap seperti semula
         transform.localScale = originalScale * safeHealth;
 
         if (fireParticle != null)
             emissionModule.rateOverTime = originalEmissionRate * currentHealth;
         if (innerFireParticle != null)
-            emissionModule.rateOverTime = originalInnerEmissionRate * currentHealth;
+            innerEmissionModule.rateOverTime = originalInnerEmissionRate * currentHealth;
         if (embersParticle != null)
             embersEmissionModule.rateOverTime = originalEmbersEmissionRate * currentHealth;
 
@@ -189,29 +234,25 @@ public class FireExtinguisherTarget : MonoBehaviour
     {
         isExtinguished = true;
 
+        // Hancurkan pembatas fisik agar area api bisa dilewati kembali setelah padam
+        if (_barrierCollider != null)
+        {
+            _barrierCollider.enabled = false;
+            Destroy(_barrierCollider.gameObject);
+        }
+
+        // Pastikan Burn Mark tetap aktif
         if (burnMarkObject != null)
         {
-            // Lepas parent agar tidak hilang saat objek api mati
-            burnMarkObject.transform.SetParent(null);
-            burnMarkObject.transform.position = initialBurnMarkPos;
-            burnMarkObject.transform.rotation = initialBurnMarkRot;
-            burnMarkObject.transform.localScale = initialBurnMarkScale;
-            burnMarkObject.SetActive(true); // Tampilkan bekas gosong
+            burnMarkObject.SetActive(true);
         }
 
         if (burnDecal != null)
         {
-            // 2. Lepas parent
-            burnDecal.transform.SetParent(null);
-
-            // 3. KEMBALIKAN posisi, rotasi, & skala murni dari koordinat awal
-            burnDecal.transform.position = initialWorldPosition;
-            burnDecal.transform.rotation = initialWorldRotation;
-            burnDecal.transform.localScale = Vector3.one;
-
-            burnDecal.fadeFactor = 1f; // Tampilkan 100%
+            burnDecal.fadeFactor = 1f;
         }
 
+        // Matikan lidah api & percikan
         if (fireParticle != null)
         {
             emissionModule.rateOverTime = 0f;
@@ -229,8 +270,21 @@ public class FireExtinguisherTarget : MonoBehaviour
             embersEmissionModule.rateOverTime = 0f;
             embersParticle.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         }
+
+        // ── 2. SMOKE: Munculkan saat api padam persis sesuai settingan asli partikel Anda ──
         if (smokeFromFire != null)
-            smokeFromFire.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        {
+            smokeFromFire.gameObject.SetActive(true);
+            var em = smokeFromFire.emission;
+            em.enabled = true;
+
+            smokeFromFire.Play(true);
+            Debug.Log($"[FireExtinguisherTarget] 💨 Api padam! Asap '{smokeFromFire.gameObject.name}' berhasil dimunculkan.");
+        }
+        else
+        {
+            Debug.LogWarning("[FireExtinguisherTarget] ⚠️ Api padam, tetapi slot 'Smoke From Fire' kosong! Silakan drag Particle System asap ke slot tersebut di Inspector.");
+        }
 
         if (fireLight != null) fireLight.intensity = 0f;
         if (fireFlickerScript != null) fireFlickerScript.StopFlicker();
@@ -251,6 +305,6 @@ public class FireExtinguisherTarget : MonoBehaviour
     private IEnumerator DisableAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-        gameObject.SetActive(false); // Objek Fire mati, tapi BurnDecal tetap ada karena sudah di-unparent
+        gameObject.SetActive(false); // Objek Fire mati, tapi Burn mark & Smoke tetap ada karena sudah di-unparent sejak Start
     }
 }
