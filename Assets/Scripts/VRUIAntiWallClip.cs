@@ -60,6 +60,9 @@ public class VRUIAntiWallClip : MonoBehaviour
             // Jangan sentuh UI billboard (VRBillboardUI menangani diri sendiri)
             if (c.GetComponent<VRBillboardUI>() != null) continue;
 
+            // Jangan sentuh UI MCB yang sudah tertempel rapi di dinding
+            if (c.gameObject.name.StartsWith("MCB_")) continue;
+
             // Jangan sentuh UI tombol meja / canvas anak objek lain yang ter-anchor
             if (c.transform.parent != null && !IsFloatingUI(c.gameObject)) continue;
 

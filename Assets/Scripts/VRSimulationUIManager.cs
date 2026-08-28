@@ -721,11 +721,32 @@ public class VRSimulationUIManager : MonoBehaviour
         if (alarmSystem != null)
             alarmSystem.StartAlarm();
 
-        UnlockAllAPAR();
+        // ── Langkah 1: Aktifkan wajib matikan saklar MCB ──────────────────────
+        var switchManager = FindFirstObjectByType<SwitchStepManager>();
+        if (switchManager != null)
+        {
+            switchManager.ActivateSwitchStep();
+            Debug.Log("[VRUIManager] Langkah 1 aktif: Pemain harus matikan saklar MCB dulu!");
+        }
+        else
+        {
+            // Jika tidak ada SwitchStepManager, langsung unlock (fallback)
+            UnlockAllAPAR();
+        }
 
         Debug.Log(
             "[VRUIManager] Misi Pemadaman APAR Dimulai!"
         );
+    }
+
+    /// <summary>
+    /// Dipanggil oleh SwitchStepManager setelah saklar MCB berhasil dimatikan.
+    /// Baru di sini semua APAR di-unlock untuk pemain.
+    /// </summary>
+    public void OnSwitchStepCompleted()
+    {
+        UnlockAllAPAR();
+        Debug.Log("[VRUIManager] Saklar MCB sudah dimatikan. Semua APAR sekarang bisa digunakan!");
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -94,22 +94,27 @@ public class VRFireProximityWarning : MonoBehaviour
             else return;
         }
 
-        // Cek jarak terdekat ke titik api aktif
+        // Cek jarak horizontal terdekat ke titik api aktif (pada bidang lantai XZ)
         _currentClosestDist = 999f;
         bool anyFireTooClose = false;
+
+        Vector3 camPosFlat = new Vector3(_cameraTransform.position.x, 0f, _cameraTransform.position.z);
 
         foreach (var fire in _fireTargets)
         {
             if (fire == null || !fire.gameObject.activeInHierarchy || fire.IsExtinguished)
                 continue;
 
-            float dist = Vector3.Distance(_cameraTransform.position, fire.transform.position);
+            Vector3 firePosFlat = new Vector3(fire.transform.position.x, 0f, fire.transform.position.z);
+            float dist = Vector3.Distance(camPosFlat, firePosFlat);
             if (dist < _currentClosestDist)
             {
                 _currentClosestDist = dist;
             }
 
-            if (dist < safeDistanceThreshold)
+            // Peringatan bahaya HANYA berbunyi jika jarak horizontal lebih dekat dari 1.35 meter (< 1.35 m)
+            // Jarak 1.5 - 2.0 meter adalah Jarak Ideal Aman pemadaman APAR.
+            if (dist < 1.35f)
             {
                 anyFireTooClose = true;
             }
@@ -160,7 +165,7 @@ public class VRFireProximityWarning : MonoBehaviour
 
         if (_distanceText != null)
         {
-            _distanceText.text = $"Jarak Anda: <color=#FF3B30><b>{_currentClosestDist:F1} m</b></color>  |  Batas Aman: <b>1.5 - 2.0 m</b>";
+            _distanceText.text = $"Jarak Anda: <color=#FF3B30><b>{_currentClosestDist:F1} m</b></color>  |  Jarak Aman Pemadaman: <b>1.5 - 2.0 m</b>";
         }
     }
 

@@ -465,6 +465,18 @@ public class AutoFireExtinguisher : MonoBehaviour
 
     private void OnGrabEnter(SelectEnterEventArgs args)
     {
+        // ── Pengecekan SOP BPBD: Wajib matikan saklar MCB dahulu ─────────────
+        if (SwitchStepManager.Instance != null && !SwitchStepManager.Instance.IsSwitchDone)
+        {
+            SwitchStepManager.Instance.OnAPARAttemptedBeforeSwitch();
+            Debug.Log("[APAR] ⚠️ Coba ambil APAR sebelum matikan saklar MCB! Munculkan warning.");
+            if (grabInteractable != null && grabInteractable.interactionManager != null)
+            {
+                grabInteractable.interactionManager.CancelInteractableSelection((IXRSelectInteractable)grabInteractable);
+            }
+            return;
+        }
+
         if (!isMissionStarted)
         {
             Debug.Log("[APAR] 🔒 Grab tabung diblokir — misi belum dimulai!");
