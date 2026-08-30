@@ -155,7 +155,6 @@ public class VRBillboardUI : MonoBehaviour
 
             Vector3 targetPosition = camPos + (cameraForward * targetDist);
             targetPosition.y = camPos.y + heightOffset;
-
             transform.position = targetPosition;
             transform.rotation = Quaternion.LookRotation(cameraForward);
         }

@@ -96,7 +96,10 @@ public class SwitchStepManager : MonoBehaviour
 
         // Tampilkan panduan langkah 1
         if (stepGuidePanel != null)
+        {
             stepGuidePanel.SetActive(true);
+            ShowSOPGuide();
+        }
 
         Debug.Log("[SwitchStepManager] Langkah 1 aktif: Tunggu pemain matikan MCB.");
     }
@@ -126,26 +129,71 @@ public class SwitchStepManager : MonoBehaviour
         ShowWarning();
     }
 
+    private void OnEnable()
+    {
+        VRLanguageManager.OnLanguageChanged += OnLanguageChangedHandler;
+    }
+
+    private void OnDisable()
+    {
+        VRLanguageManager.OnLanguageChanged -= OnLanguageChangedHandler;
+    }
+
+    private void OnLanguageChangedHandler(AppLanguage newLang)
+    {
+        if (CurrentStep == SwitchStep.WaitingForSwitch && stepGuidePanel != null && stepGuidePanel.activeSelf)
+        {
+            if (hideWarningCoroutine != null)
+                ShowWarning();
+            else
+                ShowSOPGuide();
+        }
+    }
+
     // ── Smart Dynamic Panel Transition ───────────────────────────────────────
     private void ShowWarning()
     {
         if (stepGuidePanel == null) return;
         stepGuidePanel.SetActive(true);
 
+        bool isEnglish = VRLanguageManager.IsEnglish;
+
         // Transformasi visual panel ke mode PERINGATAN MERAH (Alert Mode)
         SetPanelContent(
             bgColor: new Color(0.22f, 0.03f, 0.03f, 0.96f), // Deep Crimson Glass
             accentColor: new Color(1f, 0.25f, 0.25f, 1f),    // Bright Red
-            badgeText: "[!] PERINGATAN KESELAMATAN | BAHAYA SENGATAN LISTRIK",
+            badgeText: isEnglish ? "[!] SAFETY WARNING | ELECTRICAL SHOCK HAZARD" : "[!] PERINGATAN KESELAMATAN | BAHAYA SENGATAN LISTRIK",
             badgeColor: new Color(1f, 0.35f, 0.35f, 1f),
-            titleText: "Matikan Saklar Listrik Dulu!",
-            descText: "DILARANG mengambil/menggunakan APAR sebelum saklar MCB dimatikan. <b>Putuskan aliran listrik terlebih dahulu</b> untuk mencegah bahaya tersengat listrik!",
-            footerText: "> Ceklek tuas saklar MCB di dinding sebelah kanan tabung APAR"
+            titleText: isEnglish ? "Turn Off Electric Switch First!" : "Matikan Saklar Listrik Dulu!",
+            descText: isEnglish 
+                ? "DO NOT take/use fire extinguisher before turning off the MCB. <b>Cut off electrical power first</b> to prevent electric shock hazards!" 
+                : "DILARANG mengambil/menggunakan APAR sebelum saklar MCB dimatikan. <b>Putuskan aliran listrik terlebih dahulu</b> untuk mencegah bahaya tersengat listrik!",
+            footerText: isEnglish 
+                ? "> Flip down the MCB switch lever on the wall to the right of the extinguisher" 
+                : "> Ceklek tuas saklar MCB di dinding sebelah kanan tabung APAR"
         );
 
         if (hideWarningCoroutine != null)
             StopCoroutine(hideWarningCoroutine);
         hideWarningCoroutine = StartCoroutine(RestoreGuidePanelAfterDelay(3.5f));
+    }
+
+    private void ShowSOPGuide()
+    {
+        if (stepGuidePanel == null) return;
+        bool isEnglish = VRLanguageManager.IsEnglish;
+
+        SetPanelContent(
+            bgColor: new Color(0.05f, 0.07f, 0.12f, 0.96f), // Dark Slate Glass
+            accentColor: new Color(1.0f, 0.60f, 0.10f, 1.0f), // Gold / Amber
+            badgeText: isEnglish ? "BPBD SAFETY PROCEDURE | CLASS C FIRE" : "PROSEDUR KESELAMATAN BPBD | KEBAKARAN KELAS C",
+            badgeColor: new Color(1.0f, 0.68f, 0.18f, 1.0f),
+            titleText: isEnglish ? "Cut Off Electrical Power (MCB)" : "Putuskan Aliran Listrik (MCB)",
+            descText: isEnglish
+                ? "The fire originates from electrical equipment. Power <b>must be turned off first</b> to prevent <b>electric shock (electrocution)</b> during fire suppression."
+                : "Kebakaran berasal dari peralatan elektronik. Listrik <b>wajib dimatikan terlebih dahulu</b> untuk mencegah bahaya <b>sengatan listrik (electrocution)</b> saat proses pemadaman.",
+            footerText: isEnglish ? "> Click / touch the MCB switch lever on the right wall" : "> Klik / sentuh tuas saklar MCB di dinding sebelah kanan"
+        );
     }
 
     private void HideWarning()
@@ -164,15 +212,7 @@ public class SwitchStepManager : MonoBehaviour
         // Jika saklar belum dimatikan, kembalikan tampilan ke mode SOP Emas/Biru yang elegan
         if (CurrentStep == SwitchStep.WaitingForSwitch && stepGuidePanel != null && stepGuidePanel.activeSelf)
         {
-            SetPanelContent(
-                bgColor: new Color(0.05f, 0.07f, 0.12f, 0.96f), // Dark Slate Glass
-                accentColor: new Color(1.0f, 0.60f, 0.10f, 1.0f), // Gold / Amber
-                badgeText: "PROSEDUR KESELAMATAN BPBD | KEBAKARAN KELAS C",
-                badgeColor: new Color(1.0f, 0.68f, 0.18f, 1.0f),
-                titleText: "Putuskan Aliran Listrik (MCB)",
-                descText: "Kebakaran berasal dari peralatan elektronik. Listrik <b>wajib dimatikan terlebih dahulu</b> untuk mencegah bahaya <b>sengatan listrik (electrocution)</b> saat proses pemadaman.",
-                footerText: "> Klik / sentuh tuas saklar MCB di dinding sebelah kanan"
-            );
+            ShowSOPGuide();
         }
 
         hideWarningCoroutine = null;

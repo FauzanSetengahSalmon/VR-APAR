@@ -194,10 +194,44 @@ public class APARPinIndicator : MonoBehaviour
 
         isCreated = true;
 
+        UpdateTexts();
+
         // Sembunyikan dulu sampai misi dimulai
         canvasGO.SetActive(false);
 
         Debug.Log("[APARPinIndicator] Indikator pin berhasil dibuat (disembunyikan sampai misi dimulai).");
+    }
+
+    private void OnEnable()
+    {
+        VRLanguageManager.OnLanguageChanged += OnLanguageChangedHandler;
+    }
+
+    private void OnDisable()
+    {
+        VRLanguageManager.OnLanguageChanged -= OnLanguageChangedHandler;
+    }
+
+    private void OnLanguageChangedHandler(AppLanguage newLang)
+    {
+        UpdateTexts();
+    }
+
+    private void UpdateTexts()
+    {
+        bool isEnglish = VRLanguageManager.IsEnglish;
+
+        if (labelText != null)
+        {
+            labelText.text = isEnglish ? "PULL PIN FIRST!" : "CABUT PIN DULU!";
+        }
+
+        if (subLabelText != null)
+        {
+            subLabelText.text = isEnglish
+                ? "Grip pin → hold → pull out"
+                : "Grip pin → tahan → tarik keluar";
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════

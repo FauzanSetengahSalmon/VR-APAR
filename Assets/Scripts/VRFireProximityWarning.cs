@@ -163,9 +163,25 @@ public class VRFireProximityWarning : MonoBehaviour
             _borderGlowImage.color = Color.Lerp(new Color(1f, 0.15f, 0.15f, 0.4f), new Color(1f, 0.2f, 0.2f, 0.95f), pulse);
         }
 
+        bool isEnglish = VRLanguageManager.IsEnglish;
+
+        if (_titleText != null)
+        {
+            _titleText.text = isEnglish ? "[!] DANGER: TOO CLOSE TO FIRE!" : "[!] BAHAYA: TERLALU DEKAT DENGAN API!";
+        }
+
+        if (_subText != null)
+        {
+            _subText.text = isEnglish 
+                ? "Step back and maintain a safe distance of 1.5 – 2.0 meters from fire" 
+                : "Mundurlah dan jaga jarak aman 1.5 – 2.0 meter dari titik api";
+        }
+
         if (_distanceText != null)
         {
-            _distanceText.text = $"Jarak Anda: <color=#FF3B30><b>{_currentClosestDist:F1} m</b></color>  |  Jarak Aman Pemadaman: <b>1.5 - 2.0 m</b>";
+            _distanceText.text = isEnglish
+                ? $"Your Distance: <color=#FF3B30><b>{_currentClosestDist:F1} m</b></color>  |  Safe Extinguishing Distance: <b>1.5 - 2.0 m</b>"
+                : $"Jarak Anda: <color=#FF3B30><b>{_currentClosestDist:F1} m</b></color>  |  Jarak Aman Pemadaman: <b>1.5 - 2.0 m</b>";
         }
     }
 
@@ -237,7 +253,7 @@ public class VRFireProximityWarning : MonoBehaviour
         GameObject titleGO = new GameObject("TitleText");
         titleGO.transform.SetParent(contentGO.transform, false);
         _titleText = titleGO.AddComponent<TextMeshProUGUI>();
-        _titleText.text = "⚠️ BAHAYA: TERLALU DEKAT DENGAN API!";
+        _titleText.text = "[!] BAHAYA: TERLALU DEKAT DENGAN API!";
         _titleText.fontSize = 32f;
         _titleText.fontStyle = FontStyles.Bold;
         _titleText.alignment = TextAlignmentOptions.Center;

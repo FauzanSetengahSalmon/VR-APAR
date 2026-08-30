@@ -198,7 +198,7 @@ public class VRHoldButton : XRSimpleInteractable, IPointerDownHandler, IPointerU
 
     private void Update()
     {
-        // Pengecekan status penahanan dari VR XRI (Select atau Activate atau State)
+        // Pengecekan status penahanan dari VR XRI (Select atau Activate)
         bool isXriHolding = isSelected || (interactorsSelecting.Count > 0) || currentSelectingInteractor != null || currentActivatingInteractor != null;
 
         // Pengecekan status penahanan dari EventSystem UI Canvas

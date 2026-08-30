@@ -82,7 +82,7 @@ public class VRSimulationUIManager : MonoBehaviour
     private TextMeshProUGUI muteIconText;
     private TextMeshProUGUI endIconText;
 
-    [Header("UI Skor Bintang & Threshold Waktu (detik)")]
+    [Header("UI Skor Bintang (Indonesia)")]
     [Tooltip("Gambar UI Skor Bintang 1 (waktu lambat)")]
     public Sprite uiSkorBintang1;
 
@@ -92,11 +92,24 @@ public class VRSimulationUIManager : MonoBehaviour
     [Tooltip("Gambar UI Skor Bintang 3 (waktu cepat)")]
     public Sprite uiSkorBintang3;
 
+    [Header("UI Skor Bintang (English)")]
+    [Tooltip("Gambar UI Skor Bintang 1 versi Inggris (1.PNG di folder Assets/UIUX)")]
+    public Sprite uiSkorBintang1_EN;
+
+    [Tooltip("Gambar UI Skor Bintang 2 versi Inggris (2.PNG di folder Assets/UIUX)")]
+    public Sprite uiSkorBintang2_EN;
+
+    [Tooltip("Gambar UI Skor Bintang 3 versi Inggris (3.PNG di folder Assets/UIUX)")]
+    public Sprite uiSkorBintang3_EN;
+
     [Tooltip("Batas waktu MAKSIMAL untuk Bintang 3")]
     public float maxTimeFor3Stars = 30f;
 
     [Tooltip("Batas waktu MAKSIMAL untuk Bintang 2")]
     public float maxTimeFor2Stars = 60f;
+
+    // ── Elements Loading ──
+    private TextMeshProUGUI loadingTitleText;
 
     // ── Elements Victory ──
     private Image victoryBgImage;
@@ -125,6 +138,13 @@ public class VRSimulationUIManager : MonoBehaviour
 
         circleSprite = CreateCircleSprite(128);
 
+        // Auto-load English score sprites from Resources or UIUX if unassigned
+        #if UNITY_EDITOR
+        if (uiSkorBintang1_EN == null) uiSkorBintang1_EN = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/UIUX/1.PNG");
+        if (uiSkorBintang2_EN == null) uiSkorBintang2_EN = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/UIUX/2.PNG");
+        if (uiSkorBintang3_EN == null) uiSkorBintang3_EN = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/UIUX/3.PNG");
+        #endif
+
         SetupWorldSpaceCanvas();
         BuildUIComponents();
 
@@ -139,18 +159,23 @@ public class VRSimulationUIManager : MonoBehaviour
 
         if (FindFirstObjectByType<VROptimizer>() == null)
             gameObject.AddComponent<VROptimizer>();
+
+        if (FindFirstObjectByType<VRLanguageManager>() == null)
+            gameObject.AddComponent<VRLanguageManager>();
     }
 
     private void Start()
     {
         originalLandingPageGO = GameObject.Find("UI LANDING PAGE");
 
-        VRHoldButton holdBtn = FindFirstObjectByType<VRHoldButton>();
-
-        if (holdBtn != null)
+        VRHoldButton[] holdButtons = FindObjectsByType<VRHoldButton>(FindObjectsSortMode.None);
+        foreach (var holdBtn in holdButtons)
         {
-            holdBtn.OnHoldComplete.RemoveListener(StartLoadingFlow);
-            holdBtn.OnHoldComplete.AddListener(StartLoadingFlow);
+            if (holdBtn != null)
+            {
+                holdBtn.OnHoldComplete.RemoveListener(StartLoadingFlow);
+                holdBtn.OnHoldComplete.AddListener(StartLoadingFlow);
+            }
         }
 
         ApplyCustomIcons();
@@ -447,6 +472,11 @@ public class VRSimulationUIManager : MonoBehaviour
 
         SetPhase(UIPhase.Loading);
 
+        bool isEnglish = VRLanguageManager.IsEnglish;
+
+        if (loadingTitleText != null)
+            loadingTitleText.text = isEnglish ? "PREPARING MISSION" : "MENYIAPKAN MISI";
+
         if (loadingPanel != null)
             StartCoroutine(
                 AnimatePopUpScale(loadingPanel.transform)
@@ -483,17 +513,17 @@ public class VRSimulationUIManager : MonoBehaviour
             if (progress < 0.35f)
             {
                 loadingStatusText.text =
-                    "Menginisialisasi Sistem APAR...";
+                    isEnglish ? "Initializing APAR System..." : "Menginisialisasi Sistem APAR...";
             }
             else if (progress < 0.75f)
             {
                 loadingStatusText.text =
-                    "Menyiapkan Skenario Misi...";
+                    isEnglish ? "Preparing Mission Scenario..." : "Menyiapkan Skenario Misi...";
             }
             else
             {
                 loadingStatusText.text =
-                    "Menghubungkan Saluran Darurat...";
+                    isEnglish ? "Connecting Emergency Line..." : "Menghubungkan Saluran Darurat...";
             }
 
             yield return null;
@@ -506,13 +536,15 @@ public class VRSimulationUIManager : MonoBehaviour
     {
         SetPhase(UIPhase.EmergencyCall113);
 
+        bool isEnglish = VRLanguageManager.IsEnglish;
+
         if (phoneContainerRT != null)
             StartCoroutine(
                 AnimatePopUpScale(phoneContainerRT)
             );
 
         phoneDialText.text = "";
-        phoneStatusText.text = "Masukkan Nomor...";
+        phoneStatusText.text = isEnglish ? "Entering Number..." : "Masukkan Nomor...";
         phoneDispatchMessage.gameObject.SetActive(false);
 
         SetDialpadVisible(true);
@@ -549,7 +581,7 @@ public class VRSimulationUIManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.1f);
 
-        phoneStatusText.text = "Memanggil...";
+        phoneStatusText.text = isEnglish ? "Calling..." : "Memanggil...";
 
         if (dialPadButtons != null &&
             dialPadButtons.Length > 9)
@@ -567,7 +599,7 @@ public class VRSimulationUIManager : MonoBehaviour
         SetRingingVisible(true);
 
         phoneStatusText.text =
-            "Memanggil Damkar 113...";
+            isEnglish ? "Calling Fire Dept 113..." : "Memanggil Damkar 113...";
 
         if (uiAudioSource != null &&
             phoneRingingClip != null)
@@ -586,7 +618,7 @@ public class VRSimulationUIManager : MonoBehaviour
         }
 
         phoneStatusText.text =
-            "Terhubung • Damkar 113";
+            isEnglish ? "Connected • Fire Dept 113" : "Terhubung • Damkar 113";
 
         phoneDispatchMessage.gameObject.SetActive(true);
 
@@ -598,9 +630,9 @@ public class VRSimulationUIManager : MonoBehaviour
             );
         }
 
-        string fullMessage =
-            "<color=#FF5722><b>LAPORAN KEBAKARAN DITERIMA!</b></color> " +
-            "Unit Pemadam meluncur. Segera ambil APAR, cabut pin safety, arahkan corong ke pangkal api, dan semprot!";
+        string fullMessage = isEnglish
+            ? "<color=#FF5722><b>FIRE REPORT RECEIVED!</b></color> Firefighters dispatched. Grab the fire extinguisher, pull the safety pin, aim nozzle at the base of fire, and squeeze!"
+            : "<color=#FF5722><b>LAPORAN KEBAKARAN DITERIMA!</b></color> Unit Pemadam meluncur. Segera ambil APAR, cabut pin safety, arahkan corong ke pangkal api, dan semprot!";
 
         phoneDispatchMessage.text = "";
 
@@ -711,9 +743,15 @@ public class VRSimulationUIManager : MonoBehaviour
     public void StartActiveMission()
     {
         missionTimer = 0f;
-        isTimerRunning = true;
+        isTimerRunning = false; // Timer belum dihitung sebelum saklar MCB dimatikan
 
         SetPhase(UIPhase.ActiveMission);
+
+        // Tampilkan UI Panduan dan UI Jenis-Jenis APAR setelah animasi mulai selesai
+        if (VRLanguageManager.Instance != null)
+        {
+            VRLanguageManager.Instance.ShowMissionInGameUI();
+        }
 
         var alarmSystem =
             FindFirstObjectByType<FireAlarmSystem>();
@@ -730,23 +768,43 @@ public class VRSimulationUIManager : MonoBehaviour
         }
         else
         {
-            // Jika tidak ada SwitchStepManager, langsung unlock (fallback)
+            // Jika tidak ada SwitchStepManager, langsung unlock dan mulai timer (fallback)
             UnlockAllAPAR();
+            isTimerRunning = true;
         }
 
         Debug.Log(
-            "[VRUIManager] Misi Pemadaman APAR Dimulai!"
+            "[VRUIManager] Misi Pemadaman APAR Dimulai! (Waktu/timer akan dihitung setelah MCB dimatikan)"
         );
     }
 
     /// <summary>
     /// Dipanggil oleh SwitchStepManager setelah saklar MCB berhasil dimatikan.
-    /// Baru di sini semua APAR di-unlock untuk pemain.
+    /// Di sini semua APAR di-unlock dan penghitungan waktu/timer misi resmi dimulai!
     /// </summary>
     public void OnSwitchStepCompleted()
     {
         UnlockAllAPAR();
-        Debug.Log("[VRUIManager] Saklar MCB sudah dimatikan. Semua APAR sekarang bisa digunakan!");
+
+        missionTimer = 0f;
+        isTimerRunning = true; // ⏱️ Waktu misi resmi dihitung mulai dari saat MCB dimatikan!
+
+        if (VRLanguageManager.Instance != null)
+            VRLanguageManager.Instance.ShowMissionInGameUI();
+
+        Debug.Log("[VRUIManager] ⚡ Saklar MCB sudah dimatikan. Timer resmi DIMULAI & semua APAR sekarang bisa digunakan!");
+    }
+
+    /// <summary>
+    /// Memulai penghitungan waktu misi pemadaman (fallback jika timer belum berjalan).
+    /// </summary>
+    public void StartMissionTimer()
+    {
+        if (!isTimerRunning && currentPhase == UIPhase.ActiveMission)
+        {
+            isTimerRunning = true;
+            Debug.Log("[VRUIManager] ⏱️ Timer misi pemadaman resmi DIMULAI!");
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -794,22 +852,23 @@ public class VRSimulationUIManager : MonoBehaviour
             victoryTimeText.text = timeStr;
 
         // ─────────────────────────────────────────────
-        // PILIH BINTANG
+        // PILIH BINTANG (BILINGUAL SUPPORT)
         // ─────────────────────────────────────────────
 
+        bool isEnglish = VRLanguageManager.IsEnglish;
         Sprite chosenSprite;
 
         if (totalTime <= maxTimeFor3Stars)
         {
-            chosenSprite = uiSkorBintang3;
+            chosenSprite = (isEnglish && uiSkorBintang3_EN != null) ? uiSkorBintang3_EN : uiSkorBintang3;
         }
         else if (totalTime <= maxTimeFor2Stars)
         {
-            chosenSprite = uiSkorBintang2;
+            chosenSprite = (isEnglish && uiSkorBintang2_EN != null) ? uiSkorBintang2_EN : uiSkorBintang2;
         }
         else
         {
-            chosenSprite = uiSkorBintang1;
+            chosenSprite = (isEnglish && uiSkorBintang1_EN != null) ? uiSkorBintang1_EN : uiSkorBintang1;
         }
 
         if (victoryBgImage != null &&
@@ -863,11 +922,24 @@ public class VRSimulationUIManager : MonoBehaviour
     {
         currentPhase = newPhase;
 
-        if (originalLandingPageGO != null)
+        if (newPhase == UIPhase.StartLanding)
         {
-            originalLandingPageGO.SetActive(
-                newPhase == UIPhase.StartLanding
-            );
+            if (VRLanguageManager.Instance != null)
+                VRLanguageManager.Instance.ShowStartUI();
+
+            if (originalLandingPageGO != null)
+                originalLandingPageGO.SetActive(true);
+        }
+        else
+        {
+            if (newPhase == UIPhase.Loading || newPhase == UIPhase.EmergencyCall113)
+            {
+                if (VRLanguageManager.Instance != null)
+                    VRLanguageManager.Instance.HideAllStartUI();
+            }
+
+            if (originalLandingPageGO != null)
+                originalLandingPageGO.SetActive(false);
         }
 
         if (loadingPanel != null)
@@ -1022,7 +1094,7 @@ public class VRSimulationUIManager : MonoBehaviour
                 Vector2.zero
             );
 
-        CreateText(
+        loadingTitleText = CreateText(
             loadingPanel,
             "LoadingTitle",
             "MENYIAPKAN MISI",
@@ -2036,7 +2108,7 @@ public class VRSimulationUIManager : MonoBehaviour
         timerRT.anchorMax = new Vector2(0.5f, 0.5f);
         timerRT.pivot = new Vector2(0.5f, 0.5f);
 
-        timerRT.anchoredPosition = new Vector2(0f, 38f);
+        timerRT.anchoredPosition = new Vector2(0f, 60f);
         timerRT.sizeDelta = new Vector2(400f, 90f);
 
         GameObject lobbyBtnGO = new GameObject("LobbyButton");

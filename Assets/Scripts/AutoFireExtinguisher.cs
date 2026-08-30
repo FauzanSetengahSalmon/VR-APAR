@@ -483,6 +483,12 @@ public class AutoFireExtinguisher : MonoBehaviour
             return;
         }
 
+        // Mulai timer misi saat tabung APAR pertama kali di-grab
+        if (VRSimulationUIManager.Instance != null)
+        {
+            VRSimulationUIManager.Instance.StartMissionTimer();
+        }
+
         isMainHandleHeld = true;
 
         // Cari Tangan Kiri di scene (selalu pastikan Tabung dipegang Tangan Kiri)

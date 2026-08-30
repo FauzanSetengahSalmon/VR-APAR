@@ -225,18 +225,13 @@ public class APARPinGuideAnimation : MonoBehaviour
         UpdateUIState();
 
 
-        // --------------------------------------------------------
-        // SEMBUNYIKAN POSTER
-        // --------------------------------------------------------
-
-        if (safetyPoster != null && safetyPoster.activeSelf)
+        // Mulai penghitungan waktu misi
+        if (VRSimulationUIManager.Instance != null)
         {
-            safetyPoster.SetActive(false);
-
-            Debug.Log(
-                "[APARPinGuide] Poster disembunyikan karena APAR diambil."
-            );
+            VRSimulationUIManager.Instance.StartMissionTimer();
         }
+
+        Debug.Log("[APARPinGuide] APAR diambil, poster panduan tetap tampil.");
     }
 
 
@@ -341,12 +336,32 @@ public class APARPinGuideAnimation : MonoBehaviour
     }
 
 
+    private void OnEnable()
+    {
+        VRLanguageManager.OnLanguageChanged += OnLanguageChangedHandler;
+    }
+
+    private void OnDisable()
+    {
+        VRLanguageManager.OnLanguageChanged -= OnLanguageChangedHandler;
+    }
+
+    private void OnLanguageChangedHandler(AppLanguage newLang)
+    {
+        if (isGuideActive && guideCanvasGO != null && guideCanvasGO.activeSelf)
+        {
+            UpdateUIState();
+        }
+    }
+
     // ============================================================
     // UPDATE UI
     // ============================================================
 
     private void UpdateUIState()
     {
+        bool isEnglish = VRLanguageManager.IsEnglish;
+
         // ========================================================
         // TAHAP 1
         // ========================================================
@@ -356,16 +371,16 @@ public class APARPinGuideAnimation : MonoBehaviour
             // Judul.
             if (mainLabelText != null)
             {
-                mainLabelText.text = "AMBIL APAR";
+                mainLabelText.text = isEnglish ? "GRAB EXTINGUISHER" : "AMBIL APAR";
             }
 
 
             // Instruksi.
             if (subLabelText != null)
             {
-                subLabelText.text =
-                    "Tekan & Tahan tombol " +
-                    "<color=#00DCFF>GRIP</color> Samping";
+                subLabelText.text = isEnglish
+                    ? "Press & Hold side <color=#00DCFF>GRIP</color> button"
+                    : "Tekan & Tahan tombol <color=#00DCFF>GRIP</color> Samping";
             }
 
 
@@ -394,16 +409,16 @@ public class APARPinGuideAnimation : MonoBehaviour
             // Judul.
             if (mainLabelText != null)
             {
-                mainLabelText.text = "TARIK PIN APAR";
+                mainLabelText.text = isEnglish ? "PULL SAFETY PIN" : "TARIK PIN APAR";
             }
 
 
             // Instruksi.
             if (subLabelText != null)
             {
-                subLabelText.text =
-                    "Tarik Pin Apar " +
-                    "<color=#00DCFF>Di APAR Langsung</color> ";
+                subLabelText.text = isEnglish
+                    ? "Pull safety pin <color=#00DCFF>directly on Extinguisher</color>"
+                    : "Tarik Pin Apar <color=#00DCFF>Di APAR Langsung</color>";
             }
 
 
