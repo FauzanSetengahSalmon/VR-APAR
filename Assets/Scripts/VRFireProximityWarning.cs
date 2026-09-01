@@ -39,7 +39,6 @@ public class VRFireProximityWarning : MonoBehaviour
 
     private bool _isWarningActive = false;
     private float _currentClosestDist = 999f;
-    private float _lastHapticTime = 0f;
 
     private void Awake()
     {
@@ -100,6 +99,15 @@ public class VRFireProximityWarning : MonoBehaviour
 
         Vector3 camPosFlat = new Vector3(_cameraTransform.position.x, 0f, _cameraTransform.position.z);
 
+        float dangerDist = safeDistanceThreshold;
+        float criticalDist = 0.7f;
+
+        if (VRSimulationUIManager.Instance != null)
+        {
+            dangerDist = VRSimulationUIManager.Instance.fireDangerDistance;
+            criticalDist = VRSimulationUIManager.Instance.fireCriticalDistance;
+        }
+
         foreach (var fire in _fireTargets)
         {
             if (fire == null || !fire.gameObject.activeInHierarchy || fire.IsExtinguished)
@@ -112,9 +120,7 @@ public class VRFireProximityWarning : MonoBehaviour
                 _currentClosestDist = dist;
             }
 
-            // Peringatan bahaya HANYA berbunyi jika jarak horizontal lebih dekat dari 1.35 meter (< 1.35 m)
-            // Jarak 1.5 - 2.0 meter adalah Jarak Ideal Aman pemadaman APAR.
-            if (dist < 1.35f)
+            if (dist < dangerDist)
             {
                 anyFireTooClose = true;
             }
@@ -134,11 +140,11 @@ public class VRFireProximityWarning : MonoBehaviour
             UpdateUIPositionAndAnimation();
         }
 
-        // Haptic Feedback
-        if (_isWarningActive && enableHaptics && Time.time - _lastHapticTime > hapticPulseInterval)
+        // Haptic Feedback dinamis: Getaran berkala (Ringan saat mendekat, Kuat saat sangat dekat / kritis)
+        if (_isWarningActive)
         {
-            _lastHapticTime = Time.time;
-            TriggerHapticPulse(0.35f, 0.15f);
+            bool isCrit = (_currentClosestDist <= criticalDist);
+            VRHapticManager.PlayFireProximityHaptic(isCrit, XRNode.RightHand);
         }
     }
 

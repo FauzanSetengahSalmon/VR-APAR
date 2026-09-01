@@ -178,6 +178,30 @@ public class FireAlarmSystem : MonoBehaviour
         Debug.Log("[FireAlarmSystem] 🔴 Alarm aktif – lampu merah berkedip + suara alarm.");
     }
 
+    /// <summary>
+    /// Dipanggil saat MISI GAGAL (Game Over karena asap/waktu habis, BUKAN karena api padam).
+    /// Suara sirene dihentikan (misi sudah berakhir), TAPI lampu tetap MERAH solid
+    /// (berhenti berkedip, bukan berubah hijau) karena api sebenarnya belum padam.
+    /// Jangan pakai StopAlarm() untuk kasus ini — StopAlarm() khusus untuk kemenangan asli.
+    /// </summary>
+    public void StopAlarmKeepRedLight()
+    {
+        alarmActive = false;
+
+        // Hentikan suara sirene
+        if (audioSource != null && audioSource.isPlaying)
+            audioSource.Stop();
+
+        // Lampu tetap MERAH, tapi solid (tidak berkedip lagi)
+        if (indicatorLight != null)
+        {
+            indicatorLight.color     = Color.red;
+            indicatorLight.intensity = redMaxIntensity;
+        }
+
+        Debug.Log("[FireAlarmSystem] 🔴 Misi gagal – suara alarm berhenti, lampu tetap MERAH (api belum padam).");
+    }
+
     // ─────────────────────────────────────────────
     //  UTILITY: Generate Beep Clip Procedural
     // ─────────────────────────────────────────────
@@ -209,4 +233,3 @@ public class FireAlarmSystem : MonoBehaviour
         return clip;
     }
 }
-

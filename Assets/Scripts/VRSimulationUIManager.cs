@@ -14,21 +14,92 @@ public class VRSimulationUIManager : MonoBehaviour
         Loading,
         EmergencyCall113,
         ActiveMission,
-        VictoryGrade
+        VictoryGrade,
+        GameOver
     }
 
-    [Header("Status Misi Runtime")]
+    // ═══════════════════════════════════════════════════════════════════════
+    // 1. STATUS MISI RUNTIME
+    // ═══════════════════════════════════════════════════════════════════════
+    [Header("1. Status Misi Runtime")]
     public UIPhase currentPhase = UIPhase.StartLanding;
     public float missionTimer = 0f;
     public bool isTimerRunning = false;
+    [Tooltip("Status apakah peringatan asap sedang aktif")]
+    public bool isSmokeWarningActive = false;
+    [Tooltip("Status apakah Game Over sedang aktif")]
+    public bool isGameOver = false;
 
-    [Header("Pengaturan Audio UI (Optional)")]
+    // ═══════════════════════════════════════════════════════════════════════
+    // 2. WAKTU PERINGATAN ASAP & GAME OVER
+    // ═══════════════════════════════════════════════════════════════════════
+    [Header("2. Waktu Peringatan Asap & Game Over (Detik)")]
+    [Tooltip("Waktu (detik) sejak MCB dimatikan sebelum Peringatan 1 (Asap Mulai Menebal) muncul")]
+    public float waktuPeringatanAsap1 = 35f;
+
+    [Tooltip("Waktu (detik) sejak MCB dimatikan sebelum Peringatan 2 (Kondisi Kritis) muncul")]
+    public float waktuPeringatanAsap2Kritis = 60f;
+
+    [Tooltip("Jeda waktu (detik) setelah Peringatan Kritis sebelum Layar Game Over muncul")]
+    public float jedaGameOverSetelahKritis = 5f;
+
+    [Tooltip("Durasi Peringatan 1 tampil di layar (detik, default 20 detik agar tidak cepat hilang)")]
+    public float durasiPeringatan1Tampil = 20f;
+
+    [Tooltip("Skala ukuran banner Peringatan 1 & 2 di dunia VR. 1 = ukuran default. Naikkan (misal 1.3 - 1.6) supaya banner terasa lebih besar/dekat dan lebih mudah dibaca, tanpa mengubah jarak/ukuran panel lain (Loading, Telepon, Victory, Game Over).")]
+    [Range(0.5f, 2.5f)]
+    public float skalaBannerPeringatan = 1.4f;
+
+    [Tooltip("Geser banner Peringatan 1 & 2 lebih dekat ke arah pemain (nilai positif = lebih dekat/lebih besar terasa di mata, tanpa memperbesar teks lain). Dalam satuan meter.")]
+    public float majuKeArahPemainMeter = 0.35f;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 3. SLOT GAMBAR UI DARI TIM UI/UX (KUSTOM PNG)
+    // ═══════════════════════════════════════════════════════════════════════
+    [Header("3. Slot Gambar UI Kustom dari UI/UX (PNG)")]
+    [Tooltip("Banner Peringatan 1 versi Bahasa Indonesia (Rekomendasi: 1200 x 360 px)")]
+    public Sprite uiWarning1_Indonesia;
+    [Tooltip("Banner Peringatan 1 versi Bahasa Inggris (Rekomendasi: 1200 x 360 px)")]
+    public Sprite uiWarning1_Inggris;
+
+    [Tooltip("Banner Peringatan 2 / Kritis versi Bahasa Indonesia (Rekomendasi: 1200 x 360 px)")]
+    public Sprite uiWarning2_Indonesia;
+    [Tooltip("Banner Peringatan 2 / Kritis versi Bahasa Inggris (Rekomendasi: 1200 x 360 px)")]
+    public Sprite uiWarning2_Inggris;
+
+    [Tooltip("Kartu Game Over versi Bahasa Indonesia (Rekomendasi: 1080 x 1500 px)")]
+    public Sprite uiGameOver_Indonesia;
+    [Tooltip("Kartu Game Over versi Bahasa Inggris (Rekomendasi: 1080 x 1500 px)")]
+    public Sprite uiGameOver_Inggris;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 4. PENGATURAN GETARAN (HAPTIC FEEDBACK)
+    // ═══════════════════════════════════════════════════════════════════════
+    [Header("4. Pengaturan Getaran (Haptic Feedback)")]
+    [Tooltip("Aktifkan getaran controller saat APAR menyemprot")]
+    public bool enableExtinguisherHaptics = true;
+    [Range(0f, 1f)] public float extinguisherHapticAmplitude = 0.3f;
+    public float extinguisherHapticDuration = 0.08f;
+    public float extinguisherHapticInterval = 0.08f;
+
+    [Tooltip("Aktifkan getaran saat terlalu dekat dengan titik api")]
+    public bool enableFireProximityHaptics = true;
+    public float fireDangerDistance = 1.5f;
+    public float fireCriticalDistance = 0.7f;
+    [Range(0f, 1f)] public float fireHapticAmplitude = 0.2f;
+    [Range(0f, 1f)] public float fireCriticalHapticAmplitude = 0.5f;
+    public float fireHapticInterval = 0.3f;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 5. PENGATURAN AUDIO UI (OPTIONAL)
+    // ═══════════════════════════════════════════════════════════════════════
+    [Header("5. Pengaturan Audio UI (Optional)")]
     public AudioClip loadingBeepClip;
     public AudioClip phoneRingingClip;
     public AudioClip phoneDispatchClip;
     public AudioClip victoryFanfareClip;
 
-    [Header("Custom Icons HP (Drag PNG dari folder Assets)")]
+    [Header("Kustom Ikon HP Damkar 113")]
     [Tooltip("Ikon kontak avatar Damkar (center circle). Kosongkan = pakai simbol telepon default.")]
     public Sprite iconAvatar;
 
@@ -43,44 +114,6 @@ public class VRSimulationUIManager : MonoBehaviour
 
     [Tooltip("Wallpaper / background layar HP. Kosongkan = hitam solid.")]
     public Sprite phoneWallpaper;
-
-    // ── Referensi Scene & UI ──
-    private GameObject originalLandingPageGO;
-    private Canvas mainCanvas;
-    private VRBillboardUI billboardScript;
-    private AudioSource uiAudioSource;
-
-    // ── Sub-Panels VR Canvas ──
-    private GameObject loadingPanel;
-    private GameObject phoneCallPanel;
-    private GameObject victoryPanel;
-
-    // ── Elements Loading ──
-    private Image loadingProgressBar;
-    private TextMeshProUGUI loadingPercentText;
-    private TextMeshProUGUI loadingStatusText;
-
-    // ── Elements Smartphone 113 ──
-    private RectTransform phoneContainerRT;
-    private TextMeshProUGUI phoneDialText;
-    private TextMeshProUGUI phoneStatusText;
-    private TextMeshProUGUI phoneDispatchMessage;
-    private Image phoneAvatarPulseHalo;
-    private Image[] equalizerBars;
-    private Image[] rippleRings;
-    private Image[] dialPadButtons;
-
-    // ── Slot Image Custom Icon ──
-    private Image avatarCenterImage;
-    private Image callIconImage;
-    private Image muteIconImage;
-    private Image endIconImage;
-    private Image phoneScreenBgImage;
-
-    private TextMeshProUGUI avatarCenterText;
-    private TextMeshProUGUI callIconText;
-    private TextMeshProUGUI muteIconText;
-    private TextMeshProUGUI endIconText;
 
     [Header("UI Skor Bintang (Indonesia)")]
     [Tooltip("Gambar UI Skor Bintang 1 (waktu lambat)")]
@@ -108,12 +141,87 @@ public class VRSimulationUIManager : MonoBehaviour
     [Tooltip("Batas waktu MAKSIMAL untuk Bintang 2")]
     public float maxTimeFor2Stars = 60f;
 
+    [Header("Posisi Teks Timer di Kartu Victory (per Bahasa)")]
+    [Tooltip("Posisi teks waktu (00:00) relatif terhadap tengah kartu, KHUSUS versi Indonesia. Geser X/Y di sini sampai pas dengan desain PNG Indonesia.")]
+    public Vector2 posisiTimerIndonesia = new Vector2(0f, 54f);
+
+    [Tooltip("Posisi teks waktu (00:00) relatif terhadap tengah kartu, KHUSUS versi Inggris. Geser X/Y di sini sampai pas dengan desain PNG Inggris.")]
+    public Vector2 posisiTimerInggris = new Vector2(0f, 54f);
+
+    [Header("Posisi Teks Waktu di Kartu Game Over (per Bahasa)")]
+    [Tooltip("Posisi teks 'Outage Time' (MM:SS) relatif terhadap tengah kartu Game Over, versi Indonesia. Geser X/Y sampai pas dengan desain PNG.")]
+    public Vector2 posisiWaktuGameOverIndonesia = new Vector2(0f, 140f);
+
+    [Tooltip("Posisi teks 'Outage Time' (MM:SS) relatif terhadap tengah kartu Game Over, versi Inggris. Geser X/Y sampai pas dengan desain PNG.")]
+    public Vector2 posisiWaktuGameOverInggris = new Vector2(0f, 140f);
+
+    [Tooltip("Posisi tombol 'Try Again / Mulai Lagi' relatif terhadap tengah kartu Game Over. Ukuran & gaya disamakan dengan tombol kartu Victory (460x120).")]
+    public Vector2 posisiTombolRetryGameOver = new Vector2(0f, -300f);
+
+    [Tooltip("Posisi tombol 'Kembali ke Beranda/Lobby' relatif terhadap tengah kartu Game Over. Ukuran & gaya disamakan dengan tombol kartu Victory (460x120).")]
+    public Vector2 posisiTombolLobbyGameOver = new Vector2(0f, -440f);
+
+    // ── Referensi Scene & UI ──
+    private GameObject originalLandingPageGO;
+    private Canvas mainCanvas;
+    private VRBillboardUI billboardScript;
+    private AudioSource uiAudioSource;
+
+    // ── Sub-Panels VR Canvas ──
+    private GameObject loadingPanel;
+    private GameObject phoneCallPanel;
+    private GameObject victoryPanel;
+    private GameObject gameOverPanel;
+
+    // ── Internal Smoke & Warning State ──
+    private bool isSmokeAccumulationStarted = false;
+    private float smokeElapsedTime = 0f;
+    private bool warning1Triggered = false;
+    private bool warning2Triggered = false;
+
+    // ── Elements Smoke Warning ──
+    private CanvasGroup warn1CanvasGroup;
+    private Image warn1BgImage;
+    private CanvasGroup warn2CanvasGroup;
+    private Image warn2BgImage;
+
     // ── Elements Loading ──
+    private Image loadingProgressBar;
     private TextMeshProUGUI loadingTitleText;
+    private TextMeshProUGUI loadingPercentText;
+    private TextMeshProUGUI loadingStatusText;
+
+    // ── Elements Smartphone 113 ──
+    private RectTransform phoneContainerRT;
+    private TextMeshProUGUI phoneDialText;
+    private TextMeshProUGUI phoneStatusText;
+    private TextMeshProUGUI phoneDispatchMessage;
+    private Image phoneAvatarPulseHalo;
+    private Image[] equalizerBars;
+    private Image[] rippleRings;
+    private Image[] dialPadButtons;
+
+    // ── Slot Image Custom Icon ──
+    private Image avatarCenterImage;
+    private Image callIconImage;
+    private Image muteIconImage;
+    private Image endIconImage;
+    private Image phoneScreenBgImage;
+
+    private TextMeshProUGUI avatarCenterText;
+    private TextMeshProUGUI callIconText;
+    private TextMeshProUGUI muteIconText;
+    private TextMeshProUGUI endIconText;
 
     // ── Elements Victory ──
     private Image victoryBgImage;
     private TextMeshProUGUI victoryTimeText;
+
+    // ── Elements Game Over ──
+    private Image gameOverBgImage;
+    private TextMeshProUGUI gameOverTitleText;
+    private TextMeshProUGUI gameOverDescText;
+    private TextMeshProUGUI gameOverSurvivalTimeText;
 
     // ── Circle Sprite Cache ──
     private Sprite circleSprite;
@@ -322,6 +430,30 @@ public class VRSimulationUIManager : MonoBehaviour
         if (currentPhase == UIPhase.EmergencyCall113)
         {
             AnimateSmartphoneVisuals();
+        }
+
+        // ── SISTEM PERINGATAN ASAP & GAME OVER RUNTIME ──
+        if (currentPhase == UIPhase.ActiveMission && isSmokeAccumulationStarted && !isGameOver)
+        {
+            smokeElapsedTime += Time.deltaTime;
+
+            // 1. Cek Warning 1 (Asap Mulai Menebal)
+            if (smokeElapsedTime >= waktuPeringatanAsap1 && !warning1Triggered)
+            {
+                TriggerWarning1();
+            }
+
+            // 2. Cek Warning 2 (Kondisi Kritis Asap Tebal)
+            if (smokeElapsedTime >= waktuPeringatanAsap2Kritis && !warning2Triggered)
+            {
+                TriggerWarning2();
+            }
+
+            // 3. Cek Game Over setelah Jeda Waktu Kritis
+            if (warning2Triggered && smokeElapsedTime >= (waktuPeringatanAsap2Kritis + jedaGameOverSetelahKritis))
+            {
+                TriggerGameOver();
+            }
         }
     }
 
@@ -759,6 +891,13 @@ public class VRSimulationUIManager : MonoBehaviour
         if (alarmSystem != null)
             alarmSystem.StartAlarm();
 
+        // 🔊 Suara panik NPC mulai LANGSUNG saat tombol "Mulai Misi" diklik (SEMUA karakter)
+        foreach (CharacterVoiceController voice in CharacterVoiceController.All)
+        {
+            if (voice != null)
+                voice.PlayPanicSound();
+        }
+
         // ── Langkah 1: Aktifkan wajib matikan saklar MCB ──────────────────────
         var switchManager = FindFirstObjectByType<SwitchStepManager>();
         if (switchManager != null)
@@ -789,10 +928,19 @@ public class VRSimulationUIManager : MonoBehaviour
         missionTimer = 0f;
         isTimerRunning = true; // ⏱️ Waktu misi resmi dihitung mulai dari saat MCB dimatikan!
 
+        // 💨 Mulai akumulasi asap bertahap hanya setelah MCB dimatikan!
+        isSmokeAccumulationStarted = true;
+        smokeElapsedTime = 0f;
+        warning1Triggered = false;
+        warning2Triggered = false;
+
         if (VRLanguageManager.Instance != null)
             VRLanguageManager.Instance.ShowMissionInGameUI();
 
-        Debug.Log("[VRUIManager] ⚡ Saklar MCB sudah dimatikan. Timer resmi DIMULAI & semua APAR sekarang bisa digunakan!");
+        if (FireManager.Instance != null)
+            FireManager.Instance.StartSmokeAccumulation();
+
+        Debug.Log("[VRUIManager] ⚡ Saklar MCB sudah dimatikan. Timer resmi & Akumulasi Asap DIMULAI! (Suara panik NPC sudah berjalan sejak Mulai Misi)");
     }
 
     /// <summary>
@@ -808,13 +956,184 @@ public class VRSimulationUIManager : MonoBehaviour
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // SISTEM PERINGATAN ASAP & GAME OVER RUNTIME
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public void TriggerWarning1()
+    {
+        if (warning1Triggered || isGameOver || currentPhase != UIPhase.ActiveMission) return;
+        warning1Triggered = true;
+        isSmokeWarningActive = true;
+
+        bool isEng = VRLanguageManager.IsEnglish;
+        Sprite customSprite = isEng ? uiWarning1_Inggris : uiWarning1_Indonesia;
+        if (customSprite == null) customSprite = isEng ? uiWarning1_Indonesia : uiWarning1_Inggris;
+
+        // Panel kosong -> tinggal isi sprite kamu sendiri di
+        // uiWarning1_Indonesia / uiWarning1_Inggris (Inspector).
+        if (warn1BgImage != null)
+        {
+            warn1BgImage.sprite = customSprite;
+            warn1BgImage.color = Color.white;
+        }
+
+        if (warn1CanvasGroup != null)
+        {
+            // SetActive langsung, sama seperti Victory/GameOver panel. Tidak ada
+            // lagi animasi fade yang bisa numpuk/konflik dan bikin kedat-kedut.
+            warn1CanvasGroup.gameObject.SetActive(true);
+        }
+
+        Debug.Log("[VRUIManager] ⚠️ PERINGATAN 1: Asap mulai tebal.");
+    }
+
+    public void TriggerWarning2()
+    {
+        if (warning2Triggered || isGameOver || currentPhase != UIPhase.ActiveMission) return;
+        warning2Triggered = true;
+        isSmokeWarningActive = true;
+
+        // Kondisi sudah lebih kritis -> Warning 1 langsung disembunyikan, gantian ke Warning 2
+        if (warn1CanvasGroup != null)
+        {
+            warn1CanvasGroup.gameObject.SetActive(false);
+        }
+
+        bool isEng = VRLanguageManager.IsEnglish;
+        Sprite customSprite = isEng ? uiWarning2_Inggris : uiWarning2_Indonesia;
+        if (customSprite == null) customSprite = isEng ? uiWarning2_Indonesia : uiWarning2_Inggris;
+
+        // Panel kosong -> tinggal isi sprite kamu sendiri di
+        // uiWarning2_Indonesia / uiWarning2_Inggris (Inspector).
+        if (warn2BgImage != null)
+        {
+            warn2BgImage.sprite = customSprite;
+            warn2BgImage.color = Color.white;
+        }
+
+        if (warn2CanvasGroup != null)
+        {
+            warn2CanvasGroup.gameObject.SetActive(true);
+        }
+
+        Debug.Log("[VRUIManager] 🚨 PERINGATAN 2 / KRITIS: Asap sangat tebal! Hitungan Game Over dimulai.");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // GAME OVER SYSTEM (BERDASARKAN ASAP, BUKAN TIMER)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public void TriggerGameOver()
+    {
+        if (isGameOver || currentPhase == UIPhase.VictoryGrade) return;
+
+        isGameOver = true;
+        isTimerRunning = false;
+        isSmokeWarningActive = false;
+
+        SetPhase(UIPhase.GameOver);
+
+        // Hentikan suara panik karakter & alarm (SEMUA karakter)
+        foreach (CharacterVoiceController voice in CharacterVoiceController.All)
+        {
+            if (voice != null)
+                voice.StopPanicSound();
+        }
+
+        // PENTING: pakai StopAlarmKeepRedLight(), BUKAN StopAlarm().
+        // Saat Game Over, api/asap belum padam — jadi lampu harus tetap MERAH,
+        // hanya suara sirenenya saja yang dihentikan. StopAlarm() (lampu jadi HIJAU)
+        // hanya boleh dipanggil oleh FireManager saat semua api benar-benar padam.
+        var alarm = FindFirstObjectByType<FireAlarmSystem>();
+        if (alarm != null) alarm.StopAlarmKeepRedLight();
+
+        // Reset & lock APAR
+        AutoFireExtinguisher apar = FindFirstObjectByType<AutoFireExtinguisher>();
+        if (apar != null) apar.ResetToInitialPosition();
+
+        // Sembunyikan warning panels
+        if (warn1CanvasGroup != null) warn1CanvasGroup.gameObject.SetActive(false);
+        if (warn2CanvasGroup != null) warn2CanvasGroup.gameObject.SetActive(false);
+
+        // Format waktu bertahan
+        int minutes = Mathf.FloorToInt(missionTimer / 60f);
+        int seconds = Mathf.FloorToInt(missionTimer % 60f);
+        string timeStr = $"{minutes:00}:{seconds:00}";
+
+        bool isEng = VRLanguageManager.IsEnglish;
+
+        // Terapkan teks / sprite bilingual
+        if (gameOverTitleText != null)
+            gameOverTitleText.text = isEng ? "GAME OVER\nMISSION FAILED" : "GAME OVER\nMISI GAGAL";
+
+        if (gameOverDescText != null)
+            gameOverDescText.text = isEng 
+                ? "The room was filled with toxic smoke.\nYou lost consciousness due to smoke inhalation.\nIn a real fire, safety is the top priority!" 
+                : "Ruangan telah dipenuhi asap beracun.\nAnda kehilangan kesadaran akibat menghirup asap kebakaran.\nDalam kebakaran nyata, utamakan selalu keselamatan!";
+
+        if (gameOverSurvivalTimeText != null)
+        {
+            gameOverSurvivalTimeText.text = timeStr;
+
+            RectTransform survivalTimeRT = gameOverSurvivalTimeText.rectTransform;
+            survivalTimeRT.anchoredPosition = isEng ? posisiWaktuGameOverInggris : posisiWaktuGameOverIndonesia;
+        }
+
+        Sprite customSprite = isEng ? uiGameOver_Inggris : uiGameOver_Indonesia;
+        if (customSprite == null) customSprite = isEng ? uiGameOver_Indonesia : uiGameOver_Inggris;
+
+        if (gameOverBgImage != null && customSprite != null)
+        {
+            gameOverBgImage.sprite = customSprite;
+            gameOverBgImage.color = Color.white;
+        }
+
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(true);
+            StartCoroutine(AnimatePopUpScale(gameOverPanel.transform));
+        }
+
+        Debug.Log($"[VRUIManager] ☠️ GAME OVER: Paparan asap terlalu lama. Waktu bertahan: {timeStr}");
+    }
+
+    private IEnumerator FadeCanvasGroup(CanvasGroup cg, float targetAlpha, float duration, float autoHideDelay = 0f)
+    {
+        if (cg == null) yield break;
+
+        float startAlpha = cg.alpha;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            cg.alpha = Mathf.Lerp(startAlpha, targetAlpha, elapsed / duration);
+            yield return null;
+        }
+        cg.alpha = targetAlpha;
+
+        if (autoHideDelay > 0f)
+        {
+            yield return new WaitForSeconds(autoHideDelay);
+            elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                cg.alpha = Mathf.Lerp(targetAlpha, 0f, elapsed / duration);
+                yield return null;
+            }
+            cg.alpha = 0f;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // MISSION COMPLETE
     // ═══════════════════════════════════════════════════════════════════════
 
     public void OnMissionCompleted(float totalTime)
     {
         if (!isTimerRunning &&
-            currentPhase == UIPhase.VictoryGrade)
+            (currentPhase == UIPhase.VictoryGrade || currentPhase == UIPhase.GameOver))
             return;
 
         isTimerRunning = false;
@@ -823,9 +1142,28 @@ public class VRSimulationUIManager : MonoBehaviour
         ShowVictoryGradeBox(totalTime);
     }
 
+    [ContextMenu("🔍 Preview Victory (Test Posisi Timer)")]
+    private void PreviewVictoryForTesting()
+    {
+        // Klik kanan komponen ini di Inspector (saat Play Mode) -> pilih menu ini
+        // untuk langsung lihat kartu Victory + posisi timer TANPA harus
+        // menyelesaikan seluruh simulasi. Ubah posisiTimerIndonesia /
+        // posisiTimerInggris, lalu jalankan preview ini lagi untuk cek hasilnya.
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[VRUIManager] Preview hanya bisa dijalankan saat Play Mode.");
+            return;
+        }
+        ShowVictoryGradeBox(37.5f); // contoh waktu dummy 00:37
+    }
+
     private void ShowVictoryGradeBox(float totalTime)
     {
         SetPhase(UIPhase.VictoryGrade);
+
+        // Sembunyikan warning panels asap (api sudah padam)
+        if (warn1CanvasGroup != null) warn1CanvasGroup.gameObject.SetActive(false);
+        if (warn2CanvasGroup != null) warn2CanvasGroup.gameObject.SetActive(false);
 
         if (uiAudioSource != null &&
             victoryFanfareClip != null)
@@ -850,6 +1188,18 @@ public class VRSimulationUIManager : MonoBehaviour
 
         if (victoryTimeText != null)
             victoryTimeText.text = timeStr;
+
+        // ─────────────────────────────────────────────
+        // POSISI TIMER (BEDA UNTUK ID / EN KARENA DESAIN PNG BEDA)
+        // ─────────────────────────────────────────────
+
+        bool isEnglishForTimerPos = VRLanguageManager.IsEnglish;
+
+        if (victoryTimeText != null)
+        {
+            RectTransform timerRT = victoryTimeText.rectTransform;
+            timerRT.anchoredPosition = isEnglishForTimerPos ? posisiTimerInggris : posisiTimerIndonesia;
+        }
 
         // ─────────────────────────────────────────────
         // PILIH BINTANG (BILINGUAL SUPPORT)
@@ -962,6 +1312,13 @@ public class VRSimulationUIManager : MonoBehaviour
                 newPhase == UIPhase.VictoryGrade
             );
         }
+
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(
+                newPhase == UIPhase.GameOver
+            );
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1071,6 +1428,8 @@ public class VRSimulationUIManager : MonoBehaviour
         BuildLoadingPanel();
         BuildPhonePanel();
         BuildVictoryPanel();
+        BuildGameOverPanel();
+        BuildSmokeWarningPanels();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -2094,12 +2453,15 @@ public class VRSimulationUIManager : MonoBehaviour
         victoryTimeText = timerGO.AddComponent<TextMeshProUGUI>();
 
         victoryTimeText.text = "00:00";
-        victoryTimeText.fontSize = 64;
+        victoryTimeText.fontSize = 62;
         victoryTimeText.fontStyle = FontStyles.Bold;
         victoryTimeText.color = Color.white;
         victoryTimeText.alignment = TextAlignmentOptions.Center;
+        victoryTimeText.horizontalAlignment = HorizontalAlignmentOptions.Center;
+        victoryTimeText.verticalAlignment = VerticalAlignmentOptions.Middle;
         victoryTimeText.textWrappingMode = TextWrappingModes.NoWrap;
         victoryTimeText.overflowMode = TextOverflowModes.Overflow;
+        victoryTimeText.margin = Vector4.zero;
         victoryTimeText.raycastTarget = false;
 
         RectTransform timerRT = timerGO.GetComponent<RectTransform>();
@@ -2108,8 +2470,8 @@ public class VRSimulationUIManager : MonoBehaviour
         timerRT.anchorMax = new Vector2(0.5f, 0.5f);
         timerRT.pivot = new Vector2(0.5f, 0.5f);
 
-        timerRT.anchoredPosition = new Vector2(0f, 60f);
-        timerRT.sizeDelta = new Vector2(400f, 90f);
+        timerRT.anchoredPosition = posisiTimerIndonesia;
+        timerRT.sizeDelta = new Vector2(360f, 75f);
 
         GameObject lobbyBtnGO = new GameObject("LobbyButton");
         lobbyBtnGO.transform.SetParent(bgGO.transform, false);
@@ -2137,6 +2499,161 @@ public class VRSimulationUIManager : MonoBehaviour
 
         lobbyRT.anchoredPosition = new Vector2(0f, -315f);
         lobbyRT.sizeDelta = new Vector2(460f, 120f);
+    }
+
+    private void BuildGameOverPanel()
+    {
+        gameOverPanel = new GameObject("GameOverPanel");
+        gameOverPanel.transform.SetParent(mainCanvas.transform, false);
+
+        RectTransform gopRT = gameOverPanel.AddComponent<RectTransform>();
+        gopRT.anchorMin = Vector2.zero;
+        gopRT.anchorMax = Vector2.one;
+        gopRT.pivot = new Vector2(0.5f, 0.5f);
+        gopRT.sizeDelta = Vector2.zero;
+        gopRT.anchoredPosition = Vector2.zero;
+
+        // ── Gambar UI Kustom dari Tim UI/UX ──
+        GameObject bgGO = new GameObject("GameOverBgImage");
+        bgGO.transform.SetParent(gameOverPanel.transform, false);
+
+        gameOverBgImage = bgGO.AddComponent<Image>();
+        gameOverBgImage.preserveAspect = true;
+        gameOverBgImage.type = Image.Type.Simple;
+        gameOverBgImage.raycastTarget = false;
+        gameOverBgImage.color = Color.white;
+
+        RectTransform bgRT = bgGO.GetComponent<RectTransform>();
+        bgRT.anchorMin = new Vector2(0.5f, 0.5f);
+        bgRT.anchorMax = new Vector2(0.5f, 0.5f);
+        bgRT.pivot = new Vector2(0.5f, 0.5f);
+        bgRT.anchoredPosition = Vector2.zero;
+        bgRT.sizeDelta = new Vector2(530f, 750f); // Disamakan dengan ukuran kartu Victory
+
+        // ── Teks Waktu (Outage Time / Survival Time) ──
+        // Sama seperti VictoryTimeText: teks dinamis ditaruh DI ATAS gambar UI/UX,
+        // supaya angka MM:SS asli benar-benar tampil (bukan cuma placeholder di gambar).
+        GameObject survivalTimeGO = new GameObject("GameOverSurvivalTimeText");
+        survivalTimeGO.transform.SetParent(bgGO.transform, false);
+
+        gameOverSurvivalTimeText = survivalTimeGO.AddComponent<TextMeshProUGUI>();
+        gameOverSurvivalTimeText.text = "00:00";
+        gameOverSurvivalTimeText.fontSize = 62; // Disamakan dengan ukuran font timer Victory
+        gameOverSurvivalTimeText.fontStyle = FontStyles.Bold;
+        gameOverSurvivalTimeText.color = Color.white;
+        gameOverSurvivalTimeText.alignment = TextAlignmentOptions.Center;
+        gameOverSurvivalTimeText.horizontalAlignment = HorizontalAlignmentOptions.Center;
+        gameOverSurvivalTimeText.verticalAlignment = VerticalAlignmentOptions.Middle;
+        gameOverSurvivalTimeText.textWrappingMode = TextWrappingModes.NoWrap;
+        gameOverSurvivalTimeText.overflowMode = TextOverflowModes.Overflow;
+        gameOverSurvivalTimeText.margin = Vector4.zero;
+        gameOverSurvivalTimeText.raycastTarget = false;
+
+        RectTransform survivalTimeRT = survivalTimeGO.GetComponent<RectTransform>();
+        survivalTimeRT.anchorMin = new Vector2(0.5f, 0.5f);
+        survivalTimeRT.anchorMax = new Vector2(0.5f, 0.5f);
+        survivalTimeRT.pivot = new Vector2(0.5f, 0.5f);
+        survivalTimeRT.anchoredPosition = posisiWaktuGameOverIndonesia;
+        survivalTimeRT.sizeDelta = new Vector2(360f, 75f);
+
+        // ── Tombol Mulai Lagi / Try Again ──
+        // Slot button ini ditempatkan di bagian bawah kartu UI/UX kamu
+        // Sesuaikan posisi anchoredPosition jika perlu cocokkan dengan desain PNG
+        GameObject retryBtnGO = new GameObject("MulaiLagiButton");
+        retryBtnGO.transform.SetParent(bgGO.transform, false);
+
+        Button retryBtn = retryBtnGO.AddComponent<Button>();
+        retryBtn.transition = Selectable.Transition.ColorTint;
+        retryBtn.onClick.RemoveAllListeners();
+        retryBtn.onClick.AddListener(() =>
+        {
+            Debug.Log("[VRUIManager] Tombol MULAI LAGI ditekan.");
+            RestartSimulation();
+        });
+
+        Image retryImg = retryBtnGO.AddComponent<Image>();
+        retryImg.color = new Color(1f, 1f, 1f, 0.001f); // hampir transparan agar tidak menutupi gambar UI/UX tapi tetap bisa diklik
+
+        RectTransform retryRT = retryBtnGO.GetComponent<RectTransform>();
+        retryRT.anchorMin = new Vector2(0.5f, 0.5f);
+        retryRT.anchorMax = new Vector2(0.5f, 0.5f);
+        retryRT.pivot = new Vector2(0.5f, 0.5f);
+        retryRT.anchoredPosition = posisiTombolRetryGameOver;
+        retryRT.sizeDelta = new Vector2(460f, 120f);       // Disamakan dengan ukuran tombol Victory
+
+        // ── Tombol Kembali ke Beranda / Lobby ──
+        // Sama seperti LobbyButton di Victory panel, supaya Game Over juga bisa
+        // kembali ke halaman awal, bukan cuma retry saja.
+        GameObject lobbyBtnGO = new GameObject("LobbyButton");
+        lobbyBtnGO.transform.SetParent(bgGO.transform, false);
+
+        Image lobbyBtnImage = lobbyBtnGO.AddComponent<Image>();
+        lobbyBtnImage.color = new Color(1f, 1f, 1f, 0.001f);
+        lobbyBtnImage.raycastTarget = true;
+
+        Button lobbyBtn = lobbyBtnGO.AddComponent<Button>();
+        lobbyBtn.transition = Selectable.Transition.None;
+
+        lobbyBtn.onClick.RemoveAllListeners();
+        lobbyBtn.onClick.AddListener(() =>
+        {
+            Debug.Log("[VRUIManager] Tombol KEMBALI KE LOBBY (dari Game Over) ditekan.");
+            GoToLobby();
+        });
+
+        RectTransform lobbyRT = lobbyBtnGO.GetComponent<RectTransform>();
+        lobbyRT.anchorMin = new Vector2(0.5f, 0.5f);
+        lobbyRT.anchorMax = new Vector2(0.5f, 0.5f);
+        lobbyRT.pivot = new Vector2(0.5f, 0.5f);
+        lobbyRT.anchoredPosition = posisiTombolLobbyGameOver;
+        lobbyRT.sizeDelta = new Vector2(460f, 120f); // Disamakan dengan ukuran tombol Victory
+
+        gameOverPanel.SetActive(false);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SMOKE WARNING PANELS (WARNING 1 & WARNING 2 / KRITIS)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private void BuildSmokeWarningPanels()
+    {
+        // Panel dibuat KOSONG/transparan (bukan kotak warna + teks bawaan lagi).
+        // Tinggal isi sprite desain kamu sendiri di Inspector:
+        // uiWarning1_Indonesia / uiWarning1_Inggris / uiWarning2_Indonesia / uiWarning2_Inggris
+
+        // ── Panel Peringatan 1: Asap Mulai Menebal ──
+        // Ukuran disamakan rasionya dengan rekomendasi PNG (1200 x 360 = rasio 10:3)
+        // supaya gambar tidak gepeng saat di-stretch ke panel.
+        GameObject w1GO = CreateRoundedPanel(mainCanvas.gameObject, "SmokeWarning1_Panel", new Vector2(900f, 270f), new Color(0f, 0f, 0f, 0f), new Vector2(0f, 210f));
+        warn1BgImage = w1GO.GetComponent<Image>();
+        warn1BgImage.preserveAspect = true;
+
+        // Perbesar banner (skalaBannerPeringatan) dan geser sedikit ke arah pemain
+        // (majuKeArahPemainMeter, dikonversi ke unit lokal via skala canvas) supaya
+        // lebih mudah terbaca di VR tanpa mengubah panel lain.
+        w1GO.transform.localScale = Vector3.one * skalaBannerPeringatan;
+        w1GO.transform.localPosition += new Vector3(0f, 0f, -majuKeArahPemainMeter / Mathf.Max(0.0001f, mainCanvas.transform.localScale.z));
+
+        warn1CanvasGroup = w1GO.AddComponent<CanvasGroup>();
+        warn1CanvasGroup.alpha = 1f;
+        warn1CanvasGroup.blocksRaycasts = false;
+
+        // ── Panel Peringatan 2: Kondisi Kritis Asap Sangat Tebal ──
+        GameObject w2GO = CreateRoundedPanel(mainCanvas.gameObject, "SmokeWarning2_Panel", new Vector2(900f, 270f), new Color(0f, 0f, 0f, 0f), new Vector2(0f, 210f));
+        warn2BgImage = w2GO.GetComponent<Image>();
+        warn2BgImage.preserveAspect = true;
+
+        w2GO.transform.localScale = Vector3.one * skalaBannerPeringatan;
+        w2GO.transform.localPosition += new Vector3(0f, 0f, -majuKeArahPemainMeter / Mathf.Max(0.0001f, mainCanvas.transform.localScale.z));
+
+        warn2CanvasGroup = w2GO.AddComponent<CanvasGroup>();
+        warn2CanvasGroup.alpha = 1f;
+        warn2CanvasGroup.blocksRaycasts = false;
+
+        // Sama seperti Victory/GameOver panel: nonaktif total di awal via SetActive,
+        // BUKAN cuma alpha 0. Ini yang bikin nggak ada lagi efek "kedat-kedut".
+        w1GO.SetActive(false);
+        w2GO.SetActive(false);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

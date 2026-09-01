@@ -514,6 +514,13 @@ public class AutoFireExtinguisher : MonoBehaviour
         {
             isAttachedToHand = true;
 
+            // 📋 APAR sudah diambil -> sembunyikan UI Panduan & UI Jenis-Jenis APAR
+            if (VRLanguageManager.Instance != null)
+            {
+                VRLanguageManager.Instance.HideAllGuidePosters();
+                Debug.Log("[APAR] 📋 UI Panduan & UI Jenis-Jenis APAR disembunyikan (APAR sudah digrab).");
+            }
+
             transform.SetParent(leftHandTransform);
             transform.localPosition = handOffsetPosition;
             transform.localRotation = Quaternion.Euler(handOffsetRotation);
@@ -582,6 +589,9 @@ public class AutoFireExtinguisher : MonoBehaviour
                            (sprayEffect != null ? sprayEffect.transform : transform);
 
         Debug.DrawRay(nozzle.position, nozzle.forward * extinguishRange, Color.cyan);
+
+        // Haptic feedback controller saat menyemprot
+        VRHapticManager.PlayExtinguisherSprayHaptic(isAttachedToHand ? UnityEngine.XR.XRNode.RightHand : UnityEngine.XR.XRNode.LeftHand);
 
         // SphereCast untuk memadamkan target api
         RaycastHit[] hits = Physics.SphereCastAll(nozzle.position, 0.45f, nozzle.forward, extinguishRange);

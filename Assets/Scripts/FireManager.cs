@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class FireManager : MonoBehaviour
 {
+    public static FireManager Instance { get; private set; }
+
     [Header("Daftar Api")]
     public List<FireExtinguisherTarget> fireTargets = new List<FireExtinguisherTarget>();
 
@@ -16,11 +18,11 @@ public class FireManager : MonoBehaviour
     [Tooltip("Partikel kabut asap plafon ruangan")]
     public ParticleSystem indoorCeilingSmoke;
 
-    [Header("Akumulasi Asap Plafon Bertahap")]
+    [Header("Akumulasi Asap Plafon (Hanya Berjalan Setelah MCB Mati)")]
     [Tooltip("Apakah asap bertambah tebal dan banyak seiring berjalannya waktu kebakaran?")]
     public bool enableProgressiveSmoke = true;
     [Tooltip("Waktu dalam detik untuk mencapai ketebalan asap maksimal")]
-    public float timeToMaxSmoke = 25f;
+    public float timeToMaxSmoke = 35f;
     [Tooltip("Jumlah emisi asap awal (detik pertama)")]
     public float minSmokeEmission = 2f;
     [Tooltip("Jumlah emisi asap puncak (saat kebakaran lama)")]
@@ -29,10 +31,16 @@ public class FireManager : MonoBehaviour
     private int activeFireCount = 0;
     private AudioSource audioSource;
     private bool allExtinguished = false;
+
+    // ── Status Asap ──
+    private bool isSmokeAccumulationActive = false;
     private float smokeBurningTime = 0f;
 
     private void Awake()
     {
+        if (Instance == null) Instance = this;
+        else if (Instance != this) { Destroy(this); return; }
+
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.playOnAwake = false;
@@ -56,26 +64,40 @@ public class FireManager : MonoBehaviour
             if (ceilingSmokeGO != null) indoorCeilingSmoke = ceilingSmokeGO.GetComponent<ParticleSystem>();
         }
 
-        if (indoorCeilingSmoke != null && enableProgressiveSmoke)
+        if (indoorCeilingSmoke != null)
         {
             var main = indoorCeilingSmoke.main;
             main.prewarm = false;
+
             var em = indoorCeilingSmoke.emission;
             em.rateOverTime = minSmokeEmission;
             indoorCeilingSmoke.Play();
         }
     }
 
+    /// <summary>
+    /// Dipanggil saat MCB dimatikan -> Asap mulai dihitung dan menebal seiring waktu!
+    /// </summary>
+    public void StartSmokeAccumulation()
+    {
+        isSmokeAccumulationActive = true;
+        smokeBurningTime = 0f;
+        Debug.Log("[FireManager] 💨 MCB Off -> Akumulasi asap dan hitungan bahaya asap resmi DIMULAI!");
+    }
+
     private void Update()
     {
         if (allExtinguished || indoorCeilingSmoke == null || !enableProgressiveSmoke) return;
 
-        // Akumulasi asap meningkat seiring berjalannya waktu kebakaran
-        smokeBurningTime += Time.deltaTime;
-        float progress = Mathf.Clamp01(smokeBurningTime / Mathf.Max(timeToMaxSmoke, 1f));
+        // Asap HANYA menebal jika MCB sudah dimatikan
+        if (isSmokeAccumulationActive)
+        {
+            smokeBurningTime += Time.deltaTime;
 
-        var em = indoorCeilingSmoke.emission;
-        em.rateOverTime = Mathf.Lerp(minSmokeEmission, maxSmokeEmission, progress);
+            float progress = Mathf.Clamp01(smokeBurningTime / Mathf.Max(timeToMaxSmoke, 1f));
+            var em = indoorCeilingSmoke.emission;
+            em.rateOverTime = Mathf.Lerp(minSmokeEmission, maxSmokeEmission, progress);
+        }
     }
 
     /// <summary>Dipanggil oleh FireExtinguisherTarget saat 1 api padam</summary>
@@ -101,7 +123,13 @@ public class FireManager : MonoBehaviour
         var alarm = FindFirstObjectByType<FireAlarmSystem>();
         if (alarm != null) alarm.StopAlarm();
 
-        // ── Matikan Suara Teriakan Karakter ──────────────────
+        // ── Matikan Suara Teriakan Karakter & Bunyikan Kemenangan (SEMUA karakter) ──
+        foreach (CharacterVoiceController voice in CharacterVoiceController.All)
+        {
+            if (voice != null)
+                voice.PlayVictoryVoice();
+        }
+
         foreach (AudioSource charAudio in characterAudioSources)
         {
             if (charAudio != null && charAudio.isPlaying)
