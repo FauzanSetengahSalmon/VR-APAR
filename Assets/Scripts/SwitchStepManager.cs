@@ -164,10 +164,8 @@ public class SwitchStepManager : MonoBehaviour
             accentColor: new Color(1f, 0.25f, 0.25f, 1f),    // Bright Red
             badgeText: isEnglish ? "[!] SAFETY WARNING | ELECTRICAL SHOCK HAZARD" : "[!] PERINGATAN KESELAMATAN | BAHAYA SENGATAN LISTRIK",
             badgeColor: new Color(1f, 0.35f, 0.35f, 1f),
-            titleText: isEnglish ? "Turn Off Electric Switch First!" : "Matikan Saklar Listrik Dulu!",
-            descText: isEnglish 
-                ? "DO NOT take/use fire extinguisher before turning off the MCB. <b>Cut off electrical power first</b> to prevent electric shock hazards!" 
-                : "DILARANG mengambil/menggunakan APAR sebelum saklar MCB dimatikan. <b>Putuskan aliran listrik terlebih dahulu</b> untuk mencegah bahaya tersengat listrik!",
+            titleText: isEnglish ? "Turn Off Electric Switch (MCB) First!" : "Matikan Saklar Listrik (MCB) Dulu!",
+            descText: "",
             footerText: isEnglish 
                 ? "> Flip down the MCB switch lever on the wall to the right of the extinguisher" 
                 : "> Ceklek tuas saklar MCB di dinding sebelah kanan tabung APAR"
@@ -189,9 +187,7 @@ public class SwitchStepManager : MonoBehaviour
             badgeText: isEnglish ? "BPBD SAFETY PROCEDURE | CLASS C FIRE" : "PROSEDUR KESELAMATAN BPBD | KEBAKARAN KELAS C",
             badgeColor: new Color(1.0f, 0.68f, 0.18f, 1.0f),
             titleText: isEnglish ? "Cut Off Electrical Power (MCB)" : "Putuskan Aliran Listrik (MCB)",
-            descText: isEnglish
-                ? "The fire originates from electrical equipment. Power <b>must be turned off first</b> to prevent <b>electric shock (electrocution)</b> during fire suppression."
-                : "Kebakaran berasal dari peralatan elektronik. Listrik <b>wajib dimatikan terlebih dahulu</b> untuk mencegah bahaya <b>sengatan listrik (electrocution)</b> saat proses pemadaman.",
+            descText: "",
             footerText: isEnglish ? "> Click / touch the MCB switch lever on the right wall" : "> Klik / sentuh tuas saklar MCB di dinding sebelah kanan"
         );
     }
@@ -235,7 +231,11 @@ public class SwitchStepManager : MonoBehaviour
         if (tText != null) tText.text = titleText;
 
         var dText = stepGuidePanel.transform.Find("Desc_Text")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (dText != null) dText.text = descText;
+        if (dText != null)
+        {
+            dText.text = descText;
+            dText.gameObject.SetActive(!string.IsNullOrEmpty(descText));
+        }
 
         var fText = stepGuidePanel.transform.Find("Footer_Hint")?.GetComponent<TMPro.TextMeshProUGUI>();
         if (fText != null) fText.text = footerText;

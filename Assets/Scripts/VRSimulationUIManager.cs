@@ -1073,10 +1073,8 @@ public class VRSimulationUIManager : MonoBehaviour
 
         if (gameOverSurvivalTimeText != null)
         {
-            gameOverSurvivalTimeText.text = timeStr;
-
-            RectTransform survivalTimeRT = gameOverSurvivalTimeText.rectTransform;
-            survivalTimeRT.anchoredPosition = isEng ? posisiWaktuGameOverInggris : posisiWaktuGameOverIndonesia;
+            // Timer di kartu Game Over sengaja dikosongkan (tidak ditampilkan)
+            gameOverSurvivalTimeText.text = "";
         }
 
         Sprite customSprite = isEng ? uiGameOver_Inggris : uiGameOver_Indonesia;
