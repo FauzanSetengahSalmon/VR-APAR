@@ -218,6 +218,11 @@ public class VRLanguageManager : MonoBehaviour
             engHold.holdDuration = indoHold.holdDuration;
             engHold.startFillColor = indoHold.startFillColor;
             engHold.endFillColor = indoHold.endFillColor;
+            engHold.trackColor = indoHold.trackColor;
+            engHold.ringLocalPosition = indoHold.ringLocalPosition;
+            engHold.ringLocalScale = indoHold.ringLocalScale;
+            engHold.ringThicknessRatio = indoHold.ringThicknessRatio;
+            engHold.SetupProgressFillRing();
 
             if (VRSimulationUIManager.Instance != null)
             {
