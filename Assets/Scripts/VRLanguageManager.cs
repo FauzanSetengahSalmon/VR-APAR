@@ -224,6 +224,22 @@ public class VRLanguageManager : MonoBehaviour
             engHold.ringThicknessRatio = indoHold.ringThicknessRatio;
             engHold.SetupProgressFillRing();
 
+            var indoBackdrop = uiAwalGameIndonesia.GetComponent<VRUIBlackBackdrop>();
+            if (indoBackdrop != null)
+            {
+                var engBackdrop = uiAwalGameInggris.GetComponent<VRUIBlackBackdrop>();
+                if (engBackdrop == null)
+                    engBackdrop = uiAwalGameInggris.AddComponent<VRUIBlackBackdrop>();
+
+                engBackdrop.backdropPosition = indoBackdrop.backdropPosition;
+                engBackdrop.width = indoBackdrop.width;
+                engBackdrop.height = indoBackdrop.height;
+                engBackdrop.color = indoBackdrop.color;
+                engBackdrop.cornerRadius = indoBackdrop.cornerRadius;
+                engBackdrop.blockFireParticles = indoBackdrop.blockFireParticles;
+                engBackdrop.UpdateBackdrop();
+            }
+
             if (VRSimulationUIManager.Instance != null)
             {
                 engHold.OnHoldComplete.RemoveListener(VRSimulationUIManager.Instance.StartLoadingFlow);

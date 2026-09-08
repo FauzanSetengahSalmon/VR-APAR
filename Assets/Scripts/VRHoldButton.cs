@@ -54,6 +54,11 @@ public class VRHoldButton : XRSimpleInteractable, IPointerDownHandler, IPointerU
         defaultScale = transform.localScale;
         EnsureColliders();
         SetupProgressFillRing();
+
+        if (GetComponent<VRUIBlackBackdrop>() == null)
+        {
+            gameObject.AddComponent<VRUIBlackBackdrop>();
+        }
     }
 
     protected override void OnEnable()
@@ -64,20 +69,25 @@ public class VRHoldButton : XRSimpleInteractable, IPointerDownHandler, IPointerU
 
     private void OnValidate()
     {
-        if (ringCanvasGO != null)
+        #if UNITY_EDITOR
+        UnityEditor.EditorApplication.delayCall += () =>
         {
-            UpdateRingTransform();
-            if (progressFillImage != null)
+            if (this != null && ringCanvasGO != null)
             {
-                progressFillImage.sprite = CreateRingSprite(512, ringThicknessRatio);
-                progressFillImage.color = startFillColor;
-                if (backgroundTrackImage != null)
+                UpdateRingTransform();
+                if (progressFillImage != null)
                 {
-                    backgroundTrackImage.sprite = progressFillImage.sprite;
-                    backgroundTrackImage.color = trackColor;
+                    progressFillImage.sprite = CreateRingSprite(512, ringThicknessRatio);
+                    progressFillImage.color = startFillColor;
+                    if (backgroundTrackImage != null)
+                    {
+                        backgroundTrackImage.sprite = progressFillImage.sprite;
+                        backgroundTrackImage.color = trackColor;
+                    }
                 }
             }
-        }
+        };
+        #endif
     }
 
     private void EnsureColliders()
