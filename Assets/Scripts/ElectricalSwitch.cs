@@ -6,14 +6,13 @@ using UnityEngine.InputSystem;
 using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
-using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using XRCommonUsages = UnityEngine.XR.CommonUsages;
 
 /// <summary>
 /// MCB (Miniature Circuit Breaker) interaktif untuk simulasi VR BPBD.
-/// Mewarisi langsung dari XRSimpleInteractable sehingga bekerja sempurna dengan XR Device Simulator & Headset VR.
+/// Hanya akan mati (Turn Off) saat tombol Trigger / Grip BENAR-BENAR DITEKAN saat mengarah ke saklar.
 /// </summary>
-public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler, IPointerDownHandler
+public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler
 {
     public bool IsSwitchedOff => isSwitchedOff;
 
@@ -46,7 +45,6 @@ public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler, IPoi
     private bool isSwitchedOff = false;
     private bool isAnimating = false;
     private AudioSource audioSource;
-    private Transform[] cachedVRHands;
 
     protected override void Awake()
     {
@@ -86,62 +84,28 @@ public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler, IPoi
 
         if (interactionManager == null)
             interactionManager = FindFirstObjectByType<XRInteractionManager>();
-
-        // Cache controller tangan
-        var xrOrigin = GameObject.Find("XR Origin (XR Rig)");
-        if (xrOrigin != null)
-        {
-            var list = new System.Collections.Generic.List<Transform>();
-            foreach (var t in xrOrigin.GetComponentsInChildren<Transform>(true))
-            {
-                string n = t.name.ToLower();
-                if (n.Contains("controller") || n.Contains("hand") || n.Contains("interactor"))
-                {
-                    list.Add(t);
-                }
-            }
-            cachedVRHands = list.ToArray();
-        }
     }
 
+    // ── Method dipanggil oleh SwitchStepManager ───────────────────────────────
     public void SetMissionStarted()
     {
-        // Ready
+        // Siap menerima interaksi saat misi dimulai
+        Debug.Log("[ElectricalSwitch] Misi dimulai, MCB siap diinteraksi.");
     }
 
-    // ── XRI Native Virtual Overrides (Dipanggil langsung oleh XR Device Simulator & VR Controller) ──
-    protected override void OnSelectEntered(SelectEnterEventArgs args)
-    {
-        base.OnSelectEntered(args);
-        Debug.Log("[ElectricalSwitch] 🎯 OnSelectEntered dari: " + args.interactorObject.transform.name);
-        TurnOff();
-    }
-
+    // ── Event XRI Native: Hanya Aktif Saat Action Trigger/Activate Ditekan ──
     protected override void OnActivated(ActivateEventArgs args)
     {
         base.OnActivated(args);
-        Debug.Log("[ElectricalSwitch] 🎯 OnActivated dari: " + args.interactorObject.transform.name);
+        Debug.Log("[ElectricalSwitch] 🎯 OnActivated (Trigger Ditekan) dari: " + args.interactorObject.transform.name);
         TurnOff();
-    }
-
-    protected override void OnHoverEntered(HoverEnterEventArgs args)
-    {
-        base.OnHoverEntered(args);
-        Debug.Log("[ElectricalSwitch] 🎯 OnHoverEntered dari: " + args.interactorObject.transform.name);
     }
 
     private void Update()
     {
         if (isSwitchedOff || isAnimating) return;
 
-        // Cek jika sedang di-select oleh interactor XR
-        if (isSelected || interactorsSelecting.Count > 0)
-        {
-            TurnOff();
-            return;
-        }
-
-        // Cek jika sedang di-hover dan tombol ditekan di Device Simulator / VR
+        // Pengecekan Input Manual: Mengarah (Hover) + Menekan Trigger / Grip
         if (isHovered)
         {
             var lHand = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
@@ -153,138 +117,25 @@ public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler, IPoi
                                (rHand.TryGetFeatureValue(XRCommonUsages.gripButton, out bool rg) && rg);
 
             #if ENABLE_INPUT_SYSTEM
-            if (Mouse.current != null && (Mouse.current.leftButton.isPressed || Mouse.current.rightButton.isPressed))
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
                 trigPressed = true;
             #endif
 
             if (trigPressed)
             {
-                Debug.Log("[ElectricalSwitch] 🎯 Hovered + Button Press terdeteksi!");
+                Debug.Log("[ElectricalSwitch] 🎯 Hovered + Trigger Ditekan!");
                 TurnOff();
                 return;
             }
         }
-
-        // 1. Mouse Raycast Click di Editor/PC
-        #if ENABLE_INPUT_SYSTEM
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-        {
-            if (Camera.main != null)
-            {
-                Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
-                if (Physics.Raycast(ray, out RaycastHit hit, 15f))
-                {
-                    if (hit.transform == transform || hit.transform.IsChildOf(transform))
-                    {
-                        TurnOff();
-                        return;
-                    }
-                }
-            }
-        }
-        #endif
-
-        // 2. Deteksi Jarak Tangan VR Controller Kiri / Kanan
-        CheckVRHandProximityInput();
     }
 
-    private void CheckVRHandProximityInput()
-    {
-        Vector3 mcbPos = transform.position;
-
-        // A. Cek Transform tangan VR yang di-cache
-        if (cachedVRHands != null)
-        {
-            foreach (var hand in cachedVRHands)
-            {
-                if (hand != null && hand.gameObject.activeInHierarchy)
-                {
-                    float d = Vector3.Distance(hand.position, mcbPos);
-                    if (d < 0.45f)
-                    {
-                        // Jika tangan berada sangat dekat (< 45 cm)
-                        var left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
-                        var right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
-
-                        bool pressed = (left.TryGetFeatureValue(XRCommonUsages.triggerButton, out bool lt) && lt) ||
-                                       (left.TryGetFeatureValue(XRCommonUsages.gripButton, out bool lg) && lg) ||
-                                       (right.TryGetFeatureValue(XRCommonUsages.triggerButton, out bool rt) && rt) ||
-                                       (right.TryGetFeatureValue(XRCommonUsages.gripButton, out bool rg) && rg);
-
-                        // Jika menyentuh langsung (< 18 cm) ATAU menekan tombol dalam jarak dekat
-                        if (d < 0.18f || pressed)
-                        {
-                            Debug.Log($"[ElectricalSwitch] 🫱 Tangan VR '{hand.name}' berjarak {d:F2}m -> Matikan MCB!");
-                            TurnOff();
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-
-        // B. Cek XRNode Device Position
-        var rightHand = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
-        if (rightHand.isValid && rightHand.TryGetFeatureValue(XRCommonUsages.devicePosition, out Vector3 rPos))
-        {
-            if (Vector3.Distance(rPos, mcbPos) < 0.50f)
-            {
-                if ((rightHand.TryGetFeatureValue(XRCommonUsages.triggerButton, out bool tb) && tb) ||
-                    (rightHand.TryGetFeatureValue(XRCommonUsages.gripButton, out bool gb) && gb))
-                {
-                    TurnOff();
-                    return;
-                }
-            }
-        }
-
-        var leftHand = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
-        if (leftHand.isValid && leftHand.TryGetFeatureValue(XRCommonUsages.devicePosition, out Vector3 lPos))
-        {
-            if (Vector3.Distance(lPos, mcbPos) < 0.50f)
-            {
-                if ((leftHand.TryGetFeatureValue(XRCommonUsages.triggerButton, out bool tb) && tb) ||
-                    (leftHand.TryGetFeatureValue(XRCommonUsages.gripButton, out bool gb) && gb))
-                {
-                    TurnOff();
-                    return;
-                }
-            }
-        }
-    }
-
-    // ── UI / Pointer Events (Raycast Click) ───────────────────────────────────
+    // ── Event Canvas Pointer (UI Raycast Click) ──────────────────────────────
     public void OnPointerClick(PointerEventData eventData)
     {
         if (isAnimating || isSwitchedOff) return;
         Debug.Log("[ElectricalSwitch] 🖱️ PointerClick diterima!");
         TurnOff();
-    }
-
-    public void OnPointerDown(PointerEventData eventData)
-    {
-        if (isAnimating || isSwitchedOff) return;
-        TurnOff();
-    }
-
-    private void OnMouseDown()
-    {
-        if (isAnimating || isSwitchedOff) return;
-        Debug.Log("[ElectricalSwitch] 🖱️ MouseDown diterima!");
-        TurnOff();
-    }
-
-    // ── Physical Trigger Touch (Sentuhan langsung ujung jari / controller) ────
-    private void OnTriggerEnter(Collider other)
-    {
-        if (isAnimating || isSwitchedOff) return;
-
-        string n = other.name.ToLower();
-        if (n.Contains("hand") || n.Contains("controller") || n.Contains("finger") || n.Contains("poke") || n.Contains("direct"))
-        {
-            Debug.Log("[ElectricalSwitch] 🖐️ Sentuhan fisik terdeteksi dari: " + other.name);
-            TurnOff();
-        }
     }
 
     // ── Logika Mematikan Saklar ───────────────────────────────────────────────
@@ -300,7 +151,7 @@ public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler, IPoi
         SetBodyColor(colorOFF);
 
         OnSwitchTurnedOff?.Invoke();
-        Debug.Log("[ElectricalSwitch] ⚡⚡ MCB BERHASIL DIMATIKAN! (SWITCH OFF)");
+        Debug.Log("[ElectricalSwitch] ⚡ MCB BERHASIL DIMATIKAN!");
     }
 
     private IEnumerator AnimateLever(Vector3 targetEuler)
@@ -310,6 +161,7 @@ public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler, IPoi
         Quaternion startRot  = leverTransform.localRotation;
         Quaternion targetRot = Quaternion.Euler(targetEuler);
         float elapsed = 0f;
+
         while (elapsed < flipDuration)
         {
             elapsed += Time.deltaTime;
@@ -317,6 +169,7 @@ public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler, IPoi
             leverTransform.localRotation = Quaternion.Lerp(startRot, targetRot, t);
             yield return null;
         }
+
         leverTransform.localRotation = targetRot;
         isAnimating = false;
     }
@@ -331,4 +184,3 @@ public class ElectricalSwitch : XRSimpleInteractable, IPointerClickHandler, IPoi
         bodyRenderer.SetPropertyBlock(mpb);
     }
 }
-
