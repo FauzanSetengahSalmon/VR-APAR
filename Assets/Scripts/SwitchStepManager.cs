@@ -188,7 +188,7 @@ public class SwitchStepManager : MonoBehaviour
             badgeColor: new Color(1.0f, 0.68f, 0.18f, 1.0f),
             titleText: isEnglish ? "Cut Off Electrical Power (MCB)" : "Putuskan Aliran Listrik (MCB)",
             descText: "",
-            footerText: isEnglish ? "> Click / touch the MCB switch lever on the right wall" : "> Klik / sentuh tuas saklar MCB di dinding sebelah kanan"
+            footerText: isEnglish ? "> Click the MCB switch lever" : "> Klik tuas saklar MCB"
         );
     }
 
